@@ -10,11 +10,12 @@ int main() {
     initBoard(board);
     printBoard(board);
 
-    printf("\nDéplacement du pion blanc e2 vers e4...\n");
+    printf("\nDéplacer pion blanc e2 à e4...\n");
+    movePawn(board, 6, 4, 4, 4); // e2 → e4
+    printBoard(board);
 
-    // Déplacer Pion de (6, 4) -> (4, 4)
-    movePiece(board, 6, 4, 4, 4);
-
+    printf("\nDéplacer pion noir d7 à d5...\n");
+    movePawn(board, 1, 3, 3, 3); // d7 → d5
     printBoard(board);
 
     return 0;

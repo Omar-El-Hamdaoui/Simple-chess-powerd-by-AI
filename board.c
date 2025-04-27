@@ -77,3 +77,47 @@ int movePiece(Piece board[8][8], int from_row, int from_col, int to_row, int to_
     return 1; // Déplacement réussi
 }
 
+int movePawn(Piece board[8][8], int from_row, int from_col, int to_row, int to_col) {
+    Piece pawn = board[from_row][from_col];
+
+    if (pawn.type != 'P' && pawn.type != 'p') {
+        return 0; // Ce n'est pas un pion
+    }
+
+    int direction = (pawn.color == 'w') ? -1 : 1; // blanc monte (-1), noir descend (+1)
+
+    // Mouvement d'une case en avant
+    if (from_col == to_col && to_row == from_row + direction && board[to_row][to_col].type == ' ') {
+        board[to_row][to_col] = pawn;
+        board[from_row][from_col].type = ' ';
+        board[from_row][from_col].color = ' ';
+        return 1;
+    }
+
+    // Mouvement initial de deux cases
+    if (from_col == to_col &&
+        ((pawn.color == 'w' && from_row == 6) || (pawn.color == 'b' && from_row == 1)) &&
+        to_row == from_row + 2 * direction &&
+        board[from_row + direction][from_col].type == ' ' &&
+        board[to_row][to_col].type == ' ') {
+
+        board[to_row][to_col] = pawn;
+        board[from_row][from_col].type = ' ';
+        board[from_row][from_col].color = ' ';
+        return 1;
+        }
+
+    // Prise en diagonale
+    if ((to_col == from_col + 1 || to_col == from_col - 1) &&
+        to_row == from_row + direction &&
+        board[to_row][to_col].type != ' ' &&
+        board[to_row][to_col].color != pawn.color) {
+
+        board[to_row][to_col] = pawn;
+        board[from_row][from_col].type = ' ';
+        board[from_row][from_col].color = ' ';
+        return 1;
+        }
+
+    return 0; // Déplacement non valide
+}
