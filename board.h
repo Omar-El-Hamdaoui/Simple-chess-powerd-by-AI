@@ -1,20 +1,16 @@
+
+#ifndef BOARD_H
+#define BOARD_H
+
 #include "list.h"
+#define BOARD_SIZE 8
 
-#define RANDINIT() srand(time(NULL))
-#define RANDOM() ((float)rand() / (float)RAND_MAX)
-#define RANDMAX(x) (int)((float)(x) * rand() / (RAND_MAX + 1.0))
+typedef struct {
+    char type;  // 'P', 'R', 'N', 'B', 'Q', 'K' pour blanc ; minuscule pour noir
+    char color; // 'w' (blanc) ou 'b' (noir)
+} Piece;
 
-#define MAX_BOARD 36 // 25
-#define WH_BOARD 6   // 5
+void initBoard(Piece board[BOARD_SIZE][BOARD_SIZE]);
+void printBoard(Piece board[BOARD_SIZE][BOARD_SIZE]);
 
-Item *initGame();
-
-void initBoard(Item *node, char *board);
-
-Item *getChildBoard(Item *node, int pos);
-
-double evaluateBoard(Item *node);
-
-void printBoard(Item *board);
-
-char * copy_board(const char * board);
+#endif
