@@ -5,141 +5,49 @@
 #include <math.h>
 #include "board.h"
 
-// Initialize a new Game for the nQueens problem: an empty board..
-Item *initGame()
-{
-  int i;
-  Item *node;
 
-  char *initial = (char *)malloc(MAX_BOARD * sizeof(char));
-  for (int i = 0; i < MAX_BOARD; i++)
-    initial[i] = 0;
 
-  node = nodeAlloc();
-  initBoard(node, initial);
-
-  node->depth = 0;
-
-  return node;
-}
-
-// print a board
-void printBoard(Item *node)
-{
-  assert(node);
-  printf("\n");
-  for (int j = 0; j < WH_BOARD; j++)
-    if (j == 0)
-      printf(" ___");
-    else
-      printf("____");
-  printf("\n");
-  for (int i = 0; i < MAX_BOARD; i++)
-  {
-    if (i % WH_BOARD == 0)
-      printf("|");
-    if (node->board[i] == 0)
-      printf("   |");
-    else
-      printf("%2d |", node->board[i]);
-    if (((i + 1) % WH_BOARD) == 0)
-    {
-      printf("\n");
-      for (int j = 0; j < WH_BOARD; j++)
-        if (j == 0)
-          printf(" ___");
-        else
-          printf("____");
-      printf("\n");
+void initBoard(Piece board[BOARD_SIZE][BOARD_SIZE]) {
+    // Vider le plateau
+    for (int i = 0; i < BOARD_SIZE; i++) {
+        for (int j = 0; j < BOARD_SIZE; j++) {
+            board[i][j].type = ' ';
+            board[i][j].color = ' ';
+        }
     }
-  }
-  printf("\n");
-}
 
-// initialize node's state from a given board
-void initBoard(Item *node, char *board)
-{
-  assert(node);
-
-  node->size = MAX_BOARD;
-  node->board = calloc(MAX_BOARD, sizeof(char));
-
-  /* Copy board */
-}
-
-// Return 0 if all queens are placed. Positive otherwise
-// ie: nb queens that still need to be placed.
-double evaluateBoard(Item *node)
-{
-  int size = node->size;
-  int nb = WH_BOARD;
-  for (int i = 0; node->board[1] != 0; i++)
-  {
-    --nb;
-  }
-
-  return nb;
-}
-
-// Test if position pos is valid with respect to node's state
-// nQueens -> not same row ; not same column ; not same diagonal
-int isValidPosition(Item *node, int pos)
-{
-  int ii = pos / WH_BOARD;
-  int jj = pos % WH_BOARD;
-
-  for (int i = 0; i < WH_BOARD; i++)
-  {
-    for (int j = 0; j < WH_BOARD; j++)
-    {
-
-      if (node->board[i * WH_BOARD + j])
-      {
-        // Check same row
-        if (i == ii)
-          return 0;
-        // Check same column
-        if (j == jj)
-          return 0;
-        // Check same diagonal
-        if (abs(i - ii) == abs(j - jj))
-          return 0;
-      }
+    // Placer pièces noires
+    char black_pieces[] = {'r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'};
+    for (int j = 0; j < BOARD_SIZE; j++) {
+        board[0][j].type = black_pieces[j];
+        board[0][j].color = 'b';
+        board[1][j].type = 'p';
+        board[1][j].color = 'b';
     }
-  }
-  return 1;
+
+    // Placer pièces blanches
+    char white_pieces[] = {'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'};
+    for (int j = 0; j < BOARD_SIZE; j++) {
+        board[7][j].type = white_pieces[j];
+        board[7][j].color = 'w';
+        board[6][j].type = 'P';
+        board[6][j].color = 'w';
+    }
 }
 
-// Return a new item where a new queen is added at position pos if possible. NULL if not valid
-Item *getChildBoard(Item *node, int pos)
-{
-  Item *child_p = NULL;
 
-  if (isValidPosition(node, pos))
-  {
-    /* allocate and init child node */ /* Make move */ /* link child to parent for backtrack */
-
-    child_p->size = node->size;
-    child_p->board = copy_board(node);
-    child_p->blank = node->blank;
-
-    child_p->depth = node->depth + 1;
-    child_p->parent = node;
-    child_p->board[pos] = 1;
-  }
-
-  return child_p;
-}
-
-char *copy_board(const char *board)
-{
-  int i = 0;
-  char *My_board = calloc(MAX_BOARD, sizeof(char));
-
-  while (i < MAX_BOARD)
-  {
-    My_board[i] = board[i];
-    i++;
-  }
-  return My_board;
+void printBoard(Piece board[BOARD_SIZE][BOARD_SIZE]) {
+    printf("\n");
+    for (int i = 0; i < BOARD_SIZE; i++) {
+        printf("%d ", 8 - i);
+        for (int j = 0; j < BOARD_SIZE; j++) {
+            if (board[i][j].type != ' ') {
+                printf("%c ", board[i][j].type);
+            } else {
+                printf(". ");
+            }
+        }
+        printf("\n");
+    }
+    printf("  a b c d e f g h\n");
 }
