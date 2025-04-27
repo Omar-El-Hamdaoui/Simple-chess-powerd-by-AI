@@ -1,4 +1,4 @@
-all: nqueens board.o list.o
+all: miniChess
 
 list.o: list.c list.h
 	gcc -c list.c
@@ -6,7 +6,8 @@ list.o: list.c list.h
 board.o: board.c board.h
 	gcc -c board.c
 
-nqueens: nqueens.c board.c list.c board.h list.h item.h
-	gcc -o nqueens nqueens.c board.c list.c
+miniChess.o: miniChess.c board.h list.h item.h
+	gcc -c miniChess.c
 
-
+miniChess: miniChess.o board.o list.o
+	gcc -o miniChess miniChess.o board.o list.o

@@ -67,7 +67,7 @@ Item *onList(list_t *list, char *board)
 int My_strcmp_board(const char *b1, const char *b2)
 {
 
-  for (int i = 0; i < MAX_BOARD * WH_BOARD; ++i)
+  for (int i = 0; i < BOARD_SIZE * BOARD_SIZE; ++i)
   {
     if (b1[i] != b2[i])
     {
@@ -191,7 +191,7 @@ void printList(list_t list)
 }
 
 // TEST LIST
-
+/*
 int main()
 {
   Item *item, *node;
@@ -277,3 +277,4 @@ int main()
 
   return 0;
 }
+*/
