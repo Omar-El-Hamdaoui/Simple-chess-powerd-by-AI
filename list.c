@@ -190,6 +190,16 @@ void printList(list_t list)
   printf(" (nb_items: %d)\n", list.numElements);
 }
 
+void freeList(Item* list) {
+  Item* current = list;
+  while (current != NULL) {
+    Item* next = current->next;
+    free(current); // libérer l'élément actuel
+    current = next; // passer au suivant
+  }
+}
+
+
 // TEST LIST
 /*
 int main()

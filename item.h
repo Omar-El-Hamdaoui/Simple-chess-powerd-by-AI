@@ -3,15 +3,13 @@
 
 struct Item_s;
 
-typedef struct Item_s
-{
-  char size;   // size of board (< 255)
-  char *board; // board is an array of small int
-  char blank;
-  float f, g, h; // cost, heuristic, ...
-  int depth;
-  struct Item_s *parent;      // needed for tree structure in game search
-  struct Item_s *prev, *next; // needed for chained list
+typedef struct Item {
+  Piece board[8][8];   // Une copie du plateau pour cet état de jeu
+  int depth;           // La profondeur dans l'arbre de recherche (peut être 0 pour l'instant)
+  char player;         // Le joueur courant : 'w' (blanc) ou 'b' (noir)
+  struct Item *parent; // Lien vers le parent (peut être NULL si non utilisé)
+  struct Item *next;   // Lien vers l'élément suivant dans la liste chaînée
 } Item;
+
 
 #endif

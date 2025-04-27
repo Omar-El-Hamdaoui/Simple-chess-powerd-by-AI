@@ -25,6 +25,8 @@ void addFirst(list_t *list, Item *node); // add item in top
 void addLast(list_t *list, Item *node);  // add item in queue
 void delList(list_t *list, Item *node);  // remove a node from list
 void cleanupList(list_t *list);          // empty list and free items
+void freeList(Item* list);
+
 
 int My_strcmp_board(const char *b1, const char *b2); // Compares 2 boards return 1 if true and 0 if false
 

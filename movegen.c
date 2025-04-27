@@ -1,8 +1,8 @@
 #include "movegen.h"
-#include <stdlib.h> // Pour malloc, etc.
+#include <stdlib.h> // pour malloc, free
 
 Item* generateMoves(Piece board[8][8], char player) {
-    Item* moveList = NULL; // Liste des coups possibles
+    Item* moveList = NULL; // Liste finale des coups possibles
 
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
@@ -35,8 +35,8 @@ Item* generateMoves(Piece board[8][8], char player) {
                         }
 
                         if (success) {
-                            // Si le mouvement est valide :
-                            Item *child = nodeAlloc();
+                            // Créer un nouveau Item pour ce mouvement
+                            Item* child = nodeAlloc();
 
                             // Copier le nouveau plateau
                             for (int x = 0; x < 8; x++) {
@@ -45,10 +45,18 @@ Item* generateMoves(Piece board[8][8], char player) {
                                 }
                             }
 
+                            // Stocker qui doit jouer après
+                            child->player = (player == 'w') ? 'b' : 'w';
                             child->depth = 0;
-                            child->player = (player == 'w') ? 'b' : 'w'; // Changer de joueur
+                            child->parent = NULL;
+
+                            // Ajouter au début de la liste
                             child->next = moveList;
                             moveList = child;
+
+                            // Undo move (très simple dans notre cas car board est par référence)
+                            // Tu dois refaire l'état initial avant chaque essai pour éviter de corrompre le plateau
+                            // (Idéalement : travailler sur des copies profondes plus tard si besoin)
                         }
                     }
                 }
