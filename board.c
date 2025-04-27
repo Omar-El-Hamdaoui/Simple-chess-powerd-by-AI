@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdbool.h>
 #include "board.h"
 
 
@@ -51,3 +52,28 @@ void printBoard(Piece board[BOARD_SIZE][BOARD_SIZE]) {
     }
     printf("  a b c d e f g h\n");
 }
+
+int movePiece(Piece board[8][8], int from_row, int from_col, int to_row, int to_col) {
+    // Vérifier que les positions sont dans les limites du plateau
+    if (from_row < 0 || from_row >= 8 || from_col < 0 || from_col >= 8 ||
+        to_row < 0 || to_row >= 8 || to_col < 0 || to_col >= 8) {
+        return 0; // Déplacement invalide
+        }
+
+    // Vérifier qu'il y a une pièce à déplacer
+    if (board[from_row][from_col].type == ' ') {
+        return 0; // Pas de pièce à déplacer
+    }
+
+    // Pour l'instant, autoriser tout déplacement (on ajoutera les règles ensuite)
+
+    // Déplacer la pièce
+    board[to_row][to_col] = board[from_row][from_col];
+
+    // Vider l'ancienne case
+    board[from_row][from_col].type = ' ';
+    board[from_row][from_col].color = ' ';
+
+    return 1; // Déplacement réussi
+}
+

@@ -13,4 +13,7 @@ typedef struct {
 void initBoard(Piece board[BOARD_SIZE][BOARD_SIZE]);
 void printBoard(Piece board[BOARD_SIZE][BOARD_SIZE]);
 
+int movePiece(Piece board[8][8], int from_row, int from_col, int to_row, int to_col);
+
+
 #endif
