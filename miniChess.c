@@ -1,25 +1,22 @@
-//
-// Created by omar on 27/04/25.
-//
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "ai.h"
 #include "board.h"
+#include "ai.h"
+#include "list.h"
 
 int main() {
     Piece board[8][8];
-    initBoard(board);
-    printBoard(board);
+    initBoard(board);         // Initialise le plateau de départ
+    printBoard(board);        // Affiche le plateau initial
 
-    char currentPlayer = 'w'; // Commencent par Blancs
-    int maxMoves = 10;         // Limiter le nombre total de coups
-    int depth = 2;             // Profondeur de Minimax (pas trop grande pour aller vite)
+    char currentPlayer = 'w'; // Les blancs commencent
+    int maxMoves = 10;        // Nombre de coups maximum à simuler
+    int depth = 2;            // Profondeur de l'IA
 
     for (int moveNumber = 1; moveNumber <= maxMoves; moveNumber++) {
         printf("\n=== Coup %d (%s) ===\n", moveNumber, (currentPlayer == 'w') ? "Blancs" : "Noirs");
 
-        // IA choisit le meilleur coup
         Item* bestMove = chooseBestMove(board, currentPlayer, depth);
 
         if (bestMove == NULL) {
@@ -27,24 +24,20 @@ int main() {
             break;
         }
 
-        // Appliquer le meilleur coup sur le board
+        // Appliquer le meilleur coup
         for (int i = 0; i < 8; i++) {
             for (int j = 0; j < 8; j++) {
                 board[i][j] = bestMove->board[i][j];
             }
         }
 
-        // Afficher le nouveau plateau
-        printBoard(board);
+        printBoard(board); // Afficher l’état après le coup
 
-        // Changer de joueur
-        currentPlayer = (currentPlayer == 'w') ? 'b' : 'w';
+        currentPlayer = (currentPlayer == 'w') ? 'b' : 'w'; // Changer de joueur
 
-        // Libérer la mémoire
-        free(bestMove);
+        free(bestMove); // Libérer l’Item alloué
     }
 
     printf("\n=== Partie terminée ===\n");
-
     return 0;
 }

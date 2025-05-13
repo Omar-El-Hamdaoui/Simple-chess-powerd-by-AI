@@ -11,6 +11,12 @@ typedef struct Item {
   char player;         // Le joueur courant : 'w' (blanc) ou 'b' (noir)
   struct Item *parent; // Lien vers le parent (peut être NULL si non utilisé)
   struct Item *next;   // Lien vers l'élément suivant dans la liste chaînée
+  int whiteKingMoved ;
+  int blackKingMoved ;
+  int whiteKingsideRookMoved ;
+  int whiteQueensideRookMoved;
+  int blackKingsideRookMoved ;
+  int blackQueensideRookMoved;
 } Item;
 
 

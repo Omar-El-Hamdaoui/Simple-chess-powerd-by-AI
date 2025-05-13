@@ -2,7 +2,6 @@
 #define LIST_H
 
 #include "item.h"
-#include "board.h"
 
 typedef struct
 {

@@ -77,49 +77,43 @@ int movePiece(Piece board[8][8], int from_row, int from_col, int to_row, int to_
     return 1; // Déplacement réussi
 }
 
-int movePawn(Piece board[8][8], int from_row, int from_col, int to_row, int to_col) {
-    Piece pawn = board[from_row][from_col];
+int movePawn(Piece board[8][8], int from_i, int from_j, int to_i, int to_j) {
+    Piece p = board[from_i][from_j];
+    if (p.type != 'P' && p.type != 'p') return 0;
 
-    if (pawn.type != 'P' && pawn.type != 'p') {
-        return 0; // Ce n'est pas un pion
-    }
+    int direction = (p.color == 'w') ? -1 : 1; // blanc monte, noir descend
+    int startRow = (p.color == 'w') ? 6 : 1;
 
-    int direction = (pawn.color == 'w') ? -1 : 1; // blanc monte (-1), noir descend (+1)
-
-    // Mouvement d'une case en avant
-    if (from_col == to_col && to_row == from_row + direction && board[to_row][to_col].type == ' ') {
-        board[to_row][to_col] = pawn;
-        board[from_row][from_col].type = ' ';
-        board[from_row][from_col].color = ' ';
+    // Avance d'une case
+    if (to_j == from_j && to_i == from_i + direction && board[to_i][to_j].type == ' ') {
+        board[to_i][to_j] = p;
+        board[from_i][from_j].type = ' ';
+        board[from_i][from_j].color = ' ';
         return 1;
     }
 
-    // Mouvement initial de deux cases
-    if (from_col == to_col &&
-        ((pawn.color == 'w' && from_row == 6) || (pawn.color == 'b' && from_row == 1)) &&
-        to_row == from_row + 2 * direction &&
-        board[from_row + direction][from_col].type == ' ' &&
-        board[to_row][to_col].type == ' ') {
-
-        board[to_row][to_col] = pawn;
-        board[from_row][from_col].type = ' ';
-        board[from_row][from_col].color = ' ';
+    // Avance de deux cases depuis le départ
+    if (to_j == from_j && from_i == startRow && to_i == from_i + 2 * direction &&
+        board[from_i + direction][to_j].type == ' ' &&
+        board[to_i][to_j].type == ' ') {
+        board[to_i][to_j] = p;
+        board[from_i][from_j].type = ' ';
+        board[from_i][from_j].color = ' ';
         return 1;
         }
 
-    // Prise en diagonale
-    if ((to_col == from_col + 1 || to_col == from_col - 1) &&
-        to_row == from_row + direction &&
-        board[to_row][to_col].type != ' ' &&
-        board[to_row][to_col].color != pawn.color) {
-
-        board[to_row][to_col] = pawn;
-        board[from_row][from_col].type = ' ';
-        board[from_row][from_col].color = ' ';
+    // Capture diagonale
+    if ((to_j == from_j + 1 || to_j == from_j - 1) &&
+        to_i == from_i + direction &&
+        board[to_i][to_j].type != ' ' &&
+        board[to_i][to_j].color != p.color) {
+        board[to_i][to_j] = p;
+        board[from_i][from_j].type = ' ';
+        board[from_i][from_j].color = ' ';
         return 1;
         }
 
-    return 0; // Déplacement non valide
+    return 0;
 }
 
 int moveRook(Piece board[8][8], int from_row, int from_col, int to_row, int to_col) {
@@ -280,61 +274,4 @@ int moveKing(Piece board[8][8], int from_row, int from_col, int to_row, int to_c
 }
 
 
-Item *generateMoves(Piece board[8][8], char player) {
-    Item *moveList = NULL; // liste de tous les coups possibles
-
-    for (int i = 0; i < 8; i++) {
-        for (int j = 0; j < 8; j++) {
-            Piece piece = board[i][j];
-            if (piece.type != ' ' && piece.color == player) {
-                for (int i2 = 0; i2 < 8; i2++) {
-                    for (int j2 = 0; j2 < 8; j2++) {
-                        int success = 0;
-
-                        // Tester selon le type de pièce
-                        switch (piece.type) {
-                            case 'P': case 'p':
-                                success = movePawn(board, i, j, i2, j2);
-                                break;
-                            case 'R': case 'r':
-                                success = moveRook(board, i, j, i2, j2);
-                                break;
-                            case 'B': case 'b':
-                                success = moveBishop(board, i, j, i2, j2);
-                                break;
-                            case 'Q': case 'q':
-                                success = moveQueen(board, i, j, i2, j2);
-                                break;
-                            case 'N': case 'n':
-                                success = moveKnight(board, i, j, i2, j2);
-                                break;
-                            case 'K': case 'k':
-                                success = moveKing(board, i, j, i2, j2);
-                                break;
-                        }
-
-                        if (success) {
-                            // Si déplacement valide : sauvegarder la copie du plateau
-                            Item *child = nodeAlloc();
-                            for (int x = 0; x < 8; x++)
-                                for (int y = 0; y < 8; y++)
-                                    child->board[x][y] = board[x][y];
-
-                            child->depth = 0;
-                            child->player = (player == 'w') ? 'b' : 'w'; // changer le tour
-                            child->next = moveList;
-                            moveList = child;
-
-                            // Annuler le coup pour continuer à explorer
-                            for (int x = 0; x < 8; x++)
-                                for (int y = 0; y < 8; y++)
-                                    board[x][y] = child->parent->board[x][y]; // Revenir en arrière
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return moveList;
-}
 

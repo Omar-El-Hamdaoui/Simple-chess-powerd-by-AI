@@ -6,7 +6,7 @@
 
 int minimax(Piece board[8][8], int depth, char player, int maximizingPlayer) {
     if (depth == 0) {
-        return evaluateBoard(board);
+        return evaluate(board,player);
     }
 
     if (maximizingPlayer) {

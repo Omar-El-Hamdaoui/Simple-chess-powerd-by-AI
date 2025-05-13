@@ -50,7 +50,7 @@ int listCount(list_t *list) {
  * Find an Item in the list whose board matches the given board.
  * Returns pointer to Item or NULL if not found.
  */
-Item *onList(list_t *list, const char *board) {
+Item *onList(list_t *list,char *board) {
     assert(list && board);
     for (Item *it = list->first; it; it = it->next) {
         /* Assume Item has a board field that is a char array of size BOARD_SIZE*BOARD_SIZE */

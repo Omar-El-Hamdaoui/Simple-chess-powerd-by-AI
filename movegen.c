@@ -1,5 +1,9 @@
 #include "movegen.h"
-#include <stdlib.h> // pour malloc, free
+#include "evaluate.h"
+#include "item.h"
+#include "list.h"
+#include <stdlib.h>
+#include <string.h> // pour memcpy
 
 Item* generateMoves(Piece board[8][8], char player) {
     Item* moveList = NULL; // Liste finale des coups possibles
@@ -7,56 +11,49 @@ Item* generateMoves(Piece board[8][8], char player) {
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             Piece piece = board[i][j];
+
             if (piece.type != ' ' && piece.color == player) {
                 for (int i2 = 0; i2 < 8; i2++) {
                     for (int j2 = 0; j2 < 8; j2++) {
+                        // Créer une copie locale du plateau
+                        Piece tempBoard[8][8];
+                        memcpy(tempBoard, board, sizeof(tempBoard));
+
                         int success = 0;
 
-                        // Tester déplacement selon type de pièce
+                        // Appliquer le mouvement sur la copie
                         switch (piece.type) {
                             case 'P': case 'p':
-                                success = movePawn(board, i, j, i2, j2);
+                                success = movePawn(tempBoard, i, j, i2, j2);
                                 break;
                             case 'R': case 'r':
-                                success = moveRook(board, i, j, i2, j2);
+                                success = moveRook(tempBoard, i, j, i2, j2);
                                 break;
                             case 'B': case 'b':
-                                success = moveBishop(board, i, j, i2, j2);
+                                success = moveBishop(tempBoard, i, j, i2, j2);
                                 break;
                             case 'Q': case 'q':
-                                success = moveQueen(board, i, j, i2, j2);
+                                success = moveQueen(tempBoard, i, j, i2, j2);
                                 break;
                             case 'N': case 'n':
-                                success = moveKnight(board, i, j, i2, j2);
+                                success = moveKnight(tempBoard, i, j, i2, j2);
                                 break;
                             case 'K': case 'k':
-                                success = moveKing(board, i, j, i2, j2);
+                                success = moveKing(tempBoard, i, j, i2, j2);
                                 break;
                         }
 
                         if (success) {
-                            // Créer un nouveau Item pour ce mouvement
+                            // Créer un nouvel Item
                             Item* child = nodeAlloc();
+                            memcpy(child->board, tempBoard, sizeof(tempBoard));
 
-                            // Copier le nouveau plateau
-                            for (int x = 0; x < 8; x++) {
-                                for (int y = 0; y < 8; y++) {
-                                    child->board[x][y] = board[x][y];
-                                }
-                            }
-
-                            // Stocker qui doit jouer après
                             child->player = (player == 'w') ? 'b' : 'w';
                             child->depth = 0;
                             child->parent = NULL;
 
-                            // Ajouter au début de la liste
                             child->next = moveList;
                             moveList = child;
-
-                            // Undo move (très simple dans notre cas car board est par référence)
-                            // Tu dois refaire l'état initial avant chaque essai pour éviter de corrompre le plateau
-                            // (Idéalement : travailler sur des copies profondes plus tard si besoin)
                         }
                     }
                 }
@@ -66,3 +63,39 @@ Item* generateMoves(Piece board[8][8], char player) {
 
     return moveList;
 }
+int isInCheck(Piece board[8][8], char color) {
+    int king_row = -1, king_col = -1;
+
+    // Trouver la position du roi
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            if (board[i][j].type == 'K' && board[i][j].color == color) {
+                king_row = i;
+                king_col = j;
+                break;
+            }
+        }
+    }
+
+    if (king_row == -1 || king_col == -1) return 0; // roi non trouvé
+
+    char enemy = (color == 'w') ? 'b' : 'w';
+
+    // Vérifier si une pièce ennemie peut atteindre le roi
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            if (board[i][j].color == enemy) {
+                char t = board[i][j].type;
+                if ((t == 'P' || t == 'p') && movePawn(board, i, j, king_row, king_col)) return 1;
+                if ((t == 'R' || t == 'r') && moveRook(board, i, j, king_row, king_col)) return 1;
+                if ((t == 'B' || t == 'b') && moveBishop(board, i, j, king_row, king_col)) return 1;
+                if ((t == 'Q' || t == 'q') && moveQueen(board, i, j, king_row, king_col)) return 1;
+                if ((t == 'N' || t == 'n') && moveKnight(board, i, j, king_row, king_col)) return 1;
+                if ((t == 'K' || t == 'k') && moveKing(board, i, j, king_row, king_col)) return 1;
+            }
+        }
+    }
+
+    return 0;
+}
+
