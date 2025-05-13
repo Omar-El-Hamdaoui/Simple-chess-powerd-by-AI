@@ -1,6 +1,11 @@
 #include <stdlib.h>
 #include <assert.h>
 #include "list.h"
+
+#include <string.h>
+#include <stdio.h>
+
+
 #include "item.h"
 
 /**
@@ -8,17 +13,15 @@
  */
 Item *nodeAlloc() {
     Item *node = malloc(sizeof(Item));
-    assert(node);
+    if (!node) {
+        fprintf(stderr, "Erreur d'allocation mémoire pour Item\\n");
+        exit(EXIT_FAILURE);
+    }
 
-    /* Zero-initialize or set default fields */
-    /* If board is an array inside Item, it remains uninitialized; caller should set it */
-    node->parent = NULL;
-    node->next = NULL;
-    node->depth = 0;
-    node->player = '\0';
-
+    memset(node, 0, sizeof(Item)); // initialise tout proprement, y compris parent=NULL
     return node;
 }
+
 
 /**
  * Free a single Item node.

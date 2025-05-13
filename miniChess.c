@@ -4,6 +4,7 @@
 #include "board.h"
 #include "ai.h"
 #include "list.h"
+#include "movegen.h"
 
 int main() {
     Piece board[8][8];
@@ -12,7 +13,7 @@ int main() {
 
     char currentPlayer = 'w'; // Les blancs commencent
     int maxMoves = 10;        // Nombre de coups maximum à simuler
-    int depth = 2;            // Profondeur de l'IA
+    int depth = 5;            // Profondeur de l'IA
 
     for (int moveNumber = 1; moveNumber <= maxMoves; moveNumber++) {
         printf("\n=== Coup %d (%s) ===\n", moveNumber, (currentPlayer == 'w') ? "Blancs" : "Noirs");
@@ -32,6 +33,17 @@ int main() {
         }
 
         printBoard(board); // Afficher l’état après le coup
+
+        // Détection d'échec et mat / pat
+        if (isCheckmate(board, (currentPlayer == 'w') ? 'b' : 'w')) {
+            printf("Échec et mat ! %s perd.\n", (currentPlayer == 'w') ? "Noirs" : "Blancs");
+            break;
+        }
+        if (isStalemate(board, (currentPlayer == 'w') ? 'b' : 'w')) {
+            printf("Pat ! Partie nulle.\n");
+            break;
+        }
+
 
         currentPlayer = (currentPlayer == 'w') ? 'b' : 'w'; // Changer de joueur
 

@@ -6,7 +6,7 @@
 #include <string.h> // pour memcpy
 
 Item* generateMoves(Piece board[8][8], char player) {
-    Item* moveList = NULL; // Liste finale des coups possibles
+    Item* moveList = NULL;
 
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
@@ -15,13 +15,11 @@ Item* generateMoves(Piece board[8][8], char player) {
             if (piece.type != ' ' && piece.color == player) {
                 for (int i2 = 0; i2 < 8; i2++) {
                     for (int j2 = 0; j2 < 8; j2++) {
-                        // Créer une copie locale du plateau
                         Piece tempBoard[8][8];
                         memcpy(tempBoard, board, sizeof(tempBoard));
 
                         int success = 0;
 
-                        // Appliquer le mouvement sur la copie
                         switch (piece.type) {
                             case 'P': case 'p':
                                 success = movePawn(tempBoard, i, j, i2, j2); break;
@@ -36,20 +34,18 @@ Item* generateMoves(Piece board[8][8], char player) {
                             case 'K': case 'k':
                                 success = moveKing(tempBoard, i, j, i2, j2); break;
                         }
+
                         if (success) {
                             handlePromotion(tempBoard, i2, j2, player);
                         }
 
                         if (success && !isInCheck(tempBoard, player)) {
-                            // Créer un nouvel Item
                             Item* child = nodeAlloc();
                             memcpy(child->board, tempBoard, sizeof(tempBoard));
-
                             child->player = (player == 'w') ? 'b' : 'w';
                             child->depth = 0;
                             child->parent = NULL;
 
-                            // Copier les indicateurs de mouvement pour le roque
                             if (player == 'w') {
                                 child->whiteKingMoved = (i == 7 && j == 4) ? 1 : 0;
                                 child->whiteKingsideRookMoved = (i == 7 && j == 7) ? 1 : 0;
@@ -75,9 +71,26 @@ Item* generateMoves(Piece board[8][8], char player) {
         }
     }
 
-    tryCastling(board, player, &moveList);
+    // Créer un Item temporaire représentant l’état actuel
+    Item* currentItem = nodeAlloc();
+    memcpy(currentItem->board, board, sizeof(Piece) * 64);
+    currentItem->player = player;
+
+    // copier les flags de roque depuis le dernier coup connu si tu peux (sinon laisse à 0 par défaut)
+    currentItem->whiteKingMoved = 0;
+    currentItem->blackKingMoved = 0;
+    currentItem->whiteKingsideRookMoved = 0;
+    currentItem->whiteQueensideRookMoved = 0;
+    currentItem->blackKingsideRookMoved = 0;
+    currentItem->blackQueensideRookMoved = 0;
+
+    tryCastling(board, player, currentItem, &moveList);
+    free(currentItem);
+
+
     return moveList;
 }
+
 
 
 int isInCheck(Piece board[8][8], char color) {
@@ -116,126 +129,90 @@ int isInCheck(Piece board[8][8], char color) {
     return 0;
 }
 
-int tryCastling(Piece board[8][8], char player, Item** moveList) {
+int tryCastling(Piece board[8][8], char player, Item* parent, Item** moveList) {
     int row = (player == 'w') ? 7 : 0;
-    int king_col = 4;
 
-    if (player == 'w') {
-        // Petit roque blanc
-        if (!(*moveList)->whiteKingMoved && !(*moveList)->whiteKingsideRookMoved &&
-            board[row][5].type == ' ' && board[row][6].type == ' ' &&
+    // Roque côté roi (kingside)
+    if ((player == 'w' && !parent->whiteKingMoved && !parent->whiteKingsideRookMoved) ||
+        (player == 'b' && !parent->blackKingMoved && !parent->blackKingsideRookMoved)) {
+
+        if (board[row][5].type == ' ' && board[row][6].type == ' ' &&
             !isInCheck(board, player)) {
 
             Piece tempBoard[8][8];
-            memcpy(tempBoard, board, sizeof(tempBoard));
+            memcpy(tempBoard, board, sizeof(Piece) * 64);
 
+            // Déplacer roi
             tempBoard[row][6] = tempBoard[row][4];
             tempBoard[row][4].type = ' ';
             tempBoard[row][4].color = ' ';
+
+            // Déplacer tour
             tempBoard[row][5] = tempBoard[row][7];
             tempBoard[row][7].type = ' ';
             tempBoard[row][7].color = ' ';
 
             if (!isInCheck(tempBoard, player)) {
-                Item* child = nodeAlloc();
-                memcpy(child->board, tempBoard, sizeof(tempBoard));
-                child->player = 'b';
-                child->depth = 0;
-                child->parent = NULL;
-                child->whiteKingMoved = 1;
-                child->whiteKingsideRookMoved = 1;
-                child->next = *moveList;
-                *moveList = child;
+                // 👇 ICI : appel à la fonction externe
+                add_castling_move(tempBoard, moveList, parent, player, 1); // kingside
             }
         }
+    }
 
-        // Grand roque blanc
-        if (!(*moveList)->whiteKingMoved && !(*moveList)->whiteQueensideRookMoved &&
-            board[row][1].type == ' ' && board[row][2].type == ' ' && board[row][3].type == ' ' &&
+    // Roque côté dame (queenside)
+    if ((player == 'w' && !parent->whiteKingMoved && !parent->whiteQueensideRookMoved) ||
+        (player == 'b' && !parent->blackKingMoved && !parent->blackQueensideRookMoved)) {
+
+        if (board[row][1].type == ' ' && board[row][2].type == ' ' && board[row][3].type == ' ' &&
             !isInCheck(board, player)) {
 
             Piece tempBoard[8][8];
-            memcpy(tempBoard, board, sizeof(tempBoard));
+            memcpy(tempBoard, board, sizeof(Piece) * 64);
 
+            // Déplacer roi
             tempBoard[row][2] = tempBoard[row][4];
             tempBoard[row][4].type = ' ';
             tempBoard[row][4].color = ' ';
+
+            // Déplacer tour
             tempBoard[row][3] = tempBoard[row][0];
             tempBoard[row][0].type = ' ';
             tempBoard[row][0].color = ' ';
 
             if (!isInCheck(tempBoard, player)) {
-                Item* child = nodeAlloc();
-                memcpy(child->board, tempBoard, sizeof(tempBoard));
-                child->player = 'b';
-                child->depth = 0;
-                child->parent = NULL;
-                child->whiteKingMoved = 1;
-                child->whiteQueensideRookMoved = 1;
-                child->next = *moveList;
-                *moveList = child;
-            }
-        }
-    } else {
-        // Petit roque noir
-        if (!(*moveList)->blackKingMoved && !(*moveList)->blackKingsideRookMoved &&
-            board[row][5].type == ' ' && board[row][6].type == ' ' &&
-            !isInCheck(board, player)) {
-
-            Piece tempBoard[8][8];
-            memcpy(tempBoard, board, sizeof(tempBoard));
-
-            tempBoard[row][6] = tempBoard[row][4];
-            tempBoard[row][4].type = ' ';
-            tempBoard[row][4].color = ' ';
-            tempBoard[row][5] = tempBoard[row][7];
-            tempBoard[row][7].type = ' ';
-            tempBoard[row][7].color = ' ';
-
-            if (!isInCheck(tempBoard, player)) {
-                Item* child = nodeAlloc();
-                memcpy(child->board, tempBoard, sizeof(tempBoard));
-                child->player = 'w';
-                child->depth = 0;
-                child->parent = NULL;
-                child->blackKingMoved = 1;
-                child->blackKingsideRookMoved = 1;
-                child->next = *moveList;
-                *moveList = child;
-            }
-        }
-
-        // Grand roque noir
-        if (!(*moveList)->blackKingMoved && !(*moveList)->blackQueensideRookMoved &&
-            board[row][1].type == ' ' && board[row][2].type == ' ' && board[row][3].type == ' ' &&
-            !isInCheck(board, player)) {
-
-            Piece tempBoard[8][8];
-            memcpy(tempBoard, board, sizeof(tempBoard));
-
-            tempBoard[row][2] = tempBoard[row][4];
-            tempBoard[row][4].type = ' ';
-            tempBoard[row][4].color = ' ';
-            tempBoard[row][3] = tempBoard[row][0];
-            tempBoard[row][0].type = ' ';
-            tempBoard[row][0].color = ' ';
-
-            if (!isInCheck(tempBoard, player)) {
-                Item* child = nodeAlloc();
-                memcpy(child->board, tempBoard, sizeof(tempBoard));
-                child->player = 'w';
-                child->depth = 0;
-                child->parent = NULL;
-                child->blackKingMoved = 1;
-                child->blackQueensideRookMoved = 1;
-                child->next = *moveList;
-                *moveList = child;
+                // 👇 ICI : appel à la fonction externe
+                add_castling_move(tempBoard, moveList, parent, player, 0); // queenside
             }
         }
     }
 
     return 0;
 }
+
+// Fonction externe pour ajouter un mouvement de roque
+void add_castling_move(Piece temp[8][8], Item** list, Item* parent_state, char player, int kingside) {
+    Item* child = nodeAlloc();
+    memcpy(child->board, temp, sizeof(Piece) * 64);
+    child->player = (player == 'w') ? 'b' : 'w';
+    child->depth = 0;
+    child->parent = parent_state;
+
+    // Mémorisation des mouvements de roque
+    if (player == 'w') {
+        child->whiteKingMoved = 1;
+        child->whiteKingsideRookMoved = kingside ? 1 : 0;
+        child->whiteQueensideRookMoved = kingside ? 0 : 1;
+    } else {
+        child->blackKingMoved = 1;
+        child->blackKingsideRookMoved = kingside ? 1 : 0;
+        child->blackQueensideRookMoved = kingside ? 0 : 1;
+    }
+
+    child->next = *list;
+    *list = child;
+}
+
+
 
 void handlePromotion(Piece board[8][8], int i2, int j2, char player) {
     if (player == 'w' && i2 == 0 && board[i2][j2].type == 'P') {

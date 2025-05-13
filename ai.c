@@ -4,29 +4,37 @@
 #include <limits.h> // pour INT_MIN et INT_MAX
 #include <stddef.h>
 
-int minimax(Piece board[8][8], int depth, char player, int maximizingPlayer) {
+int minimax(Piece board[8][8], int depth, char player, int maximizingPlayer, int alpha, int beta) {
     if (depth == 0) {
-        return evaluate(board,player);
+        return evaluate(board, player);
     }
 
+    Item *moves = generateMoves(board, player);
+    int bestEval;
+
     if (maximizingPlayer) {
-        int maxEval = -100000;
-        Item *moves = generateMoves(board, player);
+        bestEval = -100000;
         for (Item *move = moves; move != NULL; move = move->next) {
-            int eval = minimax(move->board, depth - 1, (player == 'w') ? 'b' : 'w', 0);
-            if (eval > maxEval) maxEval = eval;
+            int eval = minimax(move->board, depth - 1, (player == 'w') ? 'b' : 'w', 0, alpha, beta);
+            if (eval > bestEval) bestEval = eval;
+            if (eval > alpha) alpha = eval;
+            if (beta <= alpha) break;
         }
-        return maxEval;
     } else {
-        int minEval = +100000;
-        Item *moves = generateMoves(board, player);
+        bestEval = 100000;
         for (Item *move = moves; move != NULL; move = move->next) {
-            int eval = minimax(move->board, depth - 1, (player == 'w') ? 'b' : 'w', 1);
-            if (eval < minEval) minEval = eval;
+            int eval = minimax(move->board, depth - 1, (player == 'w') ? 'b' : 'w', 1, alpha, beta);
+            if (eval < bestEval) bestEval = eval;
+            if (eval < beta) beta = eval;
+            if (beta <= alpha) break;
         }
-        return minEval;
     }
+
+    freeList(moves); // Libère les coups générés
+    return bestEval;
 }
+
+
 
 
 Item* chooseBestMove(Piece board[8][8], char player, int depth) {
@@ -35,7 +43,7 @@ Item* chooseBestMove(Piece board[8][8], char player, int depth) {
     int bestValue = (player == 'w') ? INT_MIN : INT_MAX;
 
     for (Item* move = moves; move != NULL; move = move->next) {
-        int eval = minimax(move->board, depth - 1, (player == 'w') ? 'b' : 'w', (player == 'b'));
+        int eval = minimax(move->board, depth - 1, (player == 'w') ? 'b' : 'w', 0, -100000, 100000);
 
         if (player == 'w') {
             if (eval > bestValue) {

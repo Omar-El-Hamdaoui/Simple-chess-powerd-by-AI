@@ -1,22 +1,37 @@
-all: miniChess
+# Compilation générale
+CC=gcc
+CXX=g++
+CFLAGS=-Wall -g
+CXXFLAGS=-Wall -g
+LDFLAGS=-lsfml-graphics -lsfml-window -lsfml-system
 
-list.o: list.c list.h item.h board.h piece.h
-	gcc -c list.c
+# Fichiers sources C
+C_FILES=board.c list.c ai.c movegen.c evaluate.c
+C_OBJS=$(C_FILES:.c=.o)
 
-board.o: board.c board.h piece.h
-	gcc -c board.c
+# Interface graphique en C++
+GUI=main_gui.cpp
+GUI_EXEC=gui
+GUI_OBJ=main_gui.o
 
-ai.o: ai.c ai.h movegen.h evaluate.h board.h item.h
-	gcc -c ai.c
+# Programme console
+MAIN=miniChess
+MAIN_OBJ=miniChess.o
 
-movegen.o: movegen.c movegen.h board.h item.h
-	gcc -c movegen.c
+# Règles de compilation
+all: $(MAIN) $(GUI_EXEC)
 
-evaluate.o: evaluate.c evaluate.h board.h
-	gcc -c evaluate.c
+$(MAIN): $(MAIN_OBJ) $(C_OBJS)
+	$(CC) -o $@ $^
 
-miniChess.o: miniChess.c board.h ai.h list.h item.h
-	gcc -c miniChess.c
+$(GUI_EXEC): $(GUI_OBJ) $(C_OBJS)
+	$(CXX) -o $@ $^ $(LDFLAGS)
 
-miniChess: miniChess.o board.o list.o ai.o movegen.o evaluate.o
-	gcc -o miniChess miniChess.o board.o list.o ai.o movegen.o evaluate.o
+%.o: %.c
+	$(CC) $(CFLAGS) -c $<
+
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $<
+
+clean:
+	rm -f *.o $(MAIN) $(GUI_EXEC)
