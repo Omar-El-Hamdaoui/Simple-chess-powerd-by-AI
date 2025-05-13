@@ -2,7 +2,9 @@
 // Created by omar on 27/04/25.
 //
 #include <stdio.h>
+#include <stdlib.h>
 
+#include "ai.h"
 #include "board.h"
 
 int main() {
@@ -10,13 +12,39 @@ int main() {
     initBoard(board);
     printBoard(board);
 
-    printf("\nDéplacer pion blanc e2 à e4...\n");
-    movePawn(board, 6, 4, 4, 4); // e2 → e4
-    printBoard(board);
+    char currentPlayer = 'w'; // Commencent par Blancs
+    int maxMoves = 10;         // Limiter le nombre total de coups
+    int depth = 2;             // Profondeur de Minimax (pas trop grande pour aller vite)
 
-    printf("\nDéplacer pion noir d7 à d5...\n");
-    movePawn(board, 1, 3, 3, 3); // d7 → d5
-    printBoard(board);
+    for (int moveNumber = 1; moveNumber <= maxMoves; moveNumber++) {
+        printf("\n=== Coup %d (%s) ===\n", moveNumber, (currentPlayer == 'w') ? "Blancs" : "Noirs");
+
+        // IA choisit le meilleur coup
+        Item* bestMove = chooseBestMove(board, currentPlayer, depth);
+
+        if (bestMove == NULL) {
+            printf("Aucun coup possible pour %s. Partie terminée.\n", (currentPlayer == 'w') ? "Blancs" : "Noirs");
+            break;
+        }
+
+        // Appliquer le meilleur coup sur le board
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                board[i][j] = bestMove->board[i][j];
+            }
+        }
+
+        // Afficher le nouveau plateau
+        printBoard(board);
+
+        // Changer de joueur
+        currentPlayer = (currentPlayer == 'w') ? 'b' : 'w';
+
+        // Libérer la mémoire
+        free(bestMove);
+    }
+
+    printf("\n=== Partie terminée ===\n");
 
     return 0;
 }

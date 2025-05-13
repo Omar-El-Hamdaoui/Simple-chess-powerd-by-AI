@@ -1,6 +1,8 @@
 #ifndef ITEM_H
 #define ITEM_H
 
+#include "board.h"
+
 struct Item_s;
 
 typedef struct Item {
