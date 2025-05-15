@@ -2,11 +2,17 @@
 #define AI_H
 
 #include "board.h"
-#include "item.h"
+#include "list.h"
 
+// Minimax avec élagage alpha–bêta
+int minimax_ab(Piece board[8][8],
+               int depth,
+               char player,
+               int maximizingPlayer,
+               int alpha,
+               int beta);
 
-int minimax(Piece board[8][8], int depth, char player, int maximizingPlayer, int alpha, int beta);
+// Choisit le meilleur coup pour `player` à la profondeur donnée
 Item* chooseBestMove(Piece board[8][8], char player, int depth);
 
-
-#endif
+#endif // AI_H

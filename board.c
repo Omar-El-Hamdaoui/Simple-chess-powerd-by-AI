@@ -153,18 +153,41 @@ int moveBishop(Piece board[8][8], int from_row, int from_col, int to_row, int to
 
 
 
-int moveQueen(Piece board[8][8], int from_row, int from_col, int to_row, int to_col) {
+int moveQueen(Piece board[8][8],
+              int from_row, int from_col,
+              int to_row,   int to_col) {
     Piece queen = board[from_row][from_col];
+    // Vérifier qu'il s'agit bien d'une reine
     if (queen.type != 'Q' && queen.type != 'q') return 0;
 
-    if (from_row == to_row || from_col == to_col) {
-        return moveRook(board, from_row, from_col, to_row, to_col);
-    }
-    if (abs(to_row - from_row) == abs(to_col - from_col)) {
-        return moveBishop(board, from_row, from_col, to_row, to_col);
+    int dr = to_row   - from_row;
+    int dc = to_col   - from_col;
+
+    // Cas ligne droite (tour) ou diagonale (fou)
+    bool straight = (dr == 0 || dc == 0);
+    bool diagonal = (abs(dr) == abs(dc));
+
+    if (!straight && !diagonal) {
+        // Ni droit ni diagonal
+        return 0;
     }
 
-    return 0;
+    // Vérifier qu'il n'y a pas d'obstacle entre from et to
+    int step_r = (dr == 0) ? 0 : (dr > 0 ? 1 : -1);
+    int step_c = (dc == 0) ? 0 : (dc > 0 ? 1 : -1);
+    int r = from_row + step_r;
+    int c = from_col + step_c;
+    while (r != to_row || c != to_col) {
+        if (board[r][c].type != ' ') {
+            // Un obstacle bloque la reine
+            return 0;
+        }
+        r += step_r;
+        c += step_c;
+    }
+
+    // Enfin, déplacer la reine (gère aussi la prise)
+    return movePiece(board, from_row, from_col, to_row, to_col);
 }
 
 

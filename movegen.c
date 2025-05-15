@@ -1,99 +1,142 @@
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
 #include "movegen.h"
-#include "evaluate.h"
 #include "item.h"
 #include "list.h"
-#include <stdlib.h>
-#include <string.h> // pour memcpy
-#include <stdbool.h>
+#include "evaluate.h"
 
+// Les vecteurs de déplacement pour cavalier et roi
+static const int knight_dirs[8][2] = {
+    {+2,+1},{+2,-1},{-2,+1},{-2,-1},
+    {+1,+2},{+1,-2},{-1,+2},{-1,-2}
+};
+static const int king_dirs[8][2] = {
+    {+1,0},{-1,0},{0,+1},{0,-1},
+    {+1,+1},{+1,-1},{-1,+1},{-1,-1}
+};
+
+static void add_move(Item** list, Piece tmp[8][8], char nextPlayer) {
+    // On filtre aussi l’échec dans add_move si nécessaire
+    if (isInCheck(tmp, nextPlayer == 'w' ? 'b' : 'w')) return;
+    Item* it = nodeAlloc();
+    memcpy(it->board, tmp, sizeof it->board);
+    it->player = nextPlayer;
+    it->depth  = 0;
+    it->parent = NULL;
+    it->next   = *list;
+    *list      = it;
+}
 
 Item* generateMoves(Piece board[8][8], char player) {
     Item* moveList = NULL;
-    // Savoir si, avant tout coup, le roi est déjà en échec
-    bool kingInCheck = isInCheck(board, player);
+    char enemy      = (player=='w')?'b':'w';
+    char nextPlayer = enemy;
+    Piece tmp[8][8];
 
-    // Pour chaque pièce du joueur...
-    for (int i = 0; i < 8; i++) {
-      for (int j = 0; j < 8; j++) {
-        Piece piece = board[i][j];
-        if (piece.type == ' ' || piece.color != player)
-          continue;
+    // Directions pour cavalier
+    const int knight_dirs[8][2] = {
+        {2,1},{2,-1},{-2,1},{-2,-1},
+        {1,2},{1,-2},{-1,2},{-1,-2}
+    };
+    // Directions pour roi et pour reine / tour / fou
+    const int king_dirs[8][2]   = {
+        {1,0},{-1,0},{0,1},{0,-1},
+        {1,1},{1,-1},{-1,1},{-1,-1}
+    };
 
-        // Essayer tous les déplacements possibles
-        for (int i2 = 0; i2 < 8; i2++) {
-          for (int j2 = 0; j2 < 8; j2++) {
+    for (int i = 0; i < 8; ++i) {
+        for (int j = 0; j < 8; ++j) {
+            Piece p = board[i][j];
+            if (p.type==' ' || p.color!=player) continue;
 
-            // ────────── Nouveau bloc ──────────
-            Piece tmp[8][8];
-            if ( tryMove(tmp, board, i, j, i2, j2) ) {
-                handlePromotion(tmp, i2, j2, player);
-
-                if ( !isInCheck(tmp, player) ) {
-                    /* ---- création et insertion de l’Item ---- */
-                    Item* child = nodeAlloc();
-                    memcpy(child->board, tmp, sizeof(tmp));
-                    child->player = (player=='w') ? 'b' : 'w';
-                    child->depth  = 0;
-                    child->parent = NULL;
-
-
-                    child->next = moveList;
-                    moveList    = child;
+            switch (toupper(p.type)) {
+            case 'P': {
+                int dir = (player=='w') ? -1 : +1;
+                // avance 1
+                if (i+dir>=0 && i+dir<8 && board[i+dir][j].type==' ') {
+                    memcpy(tmp, board, sizeof tmp);
+                    tmp[i+dir][j] = p; tmp[i][j].type = tmp[i][j].color = ' ';
+                    handlePromotion(tmp, i+dir, j, player);
+                    add_move(&moveList, tmp, nextPlayer);
+                    // avance 2
+                    int start = (player=='w')?6:1;
+                    if (i==start && board[i+2*dir][j].type==' ') {
+                        memcpy(tmp, board, sizeof tmp);
+                        tmp[i+2*dir][j] = p; tmp[i][j].type = tmp[i][j].color = ' ';
+                        add_move(&moveList, tmp, nextPlayer);
+                    }
                 }
+                // captures
+                for (int dj = -1; dj <= 1; dj += 2) {
+                    int ni = i+dir, nj = j+dj;
+                    if (ni>=0&&ni<8&&nj>=0&&nj<8 && board[ni][nj].color==enemy) {
+                        memcpy(tmp, board, sizeof tmp);
+                        tmp[ni][nj] = p; tmp[i][j].type = tmp[i][j].color = ' ';
+                        add_move(&moveList, tmp, nextPlayer);
+                    }
+                }
+                break;
             }
+            case 'N':
+                for (int d = 0; d < 8; ++d) {
+                    int ni = i + knight_dirs[d][0];
+                    int nj = j + knight_dirs[d][1];
+                    if (ni<0||ni>7||nj<0||nj>7) continue;
+                    if (board[ni][nj].color==player) continue;
+                    memcpy(tmp, board, sizeof tmp);
+                    tmp[ni][nj] = p; tmp[i][j].type = tmp[i][j].color = ' ';
+                    add_move(&moveList, tmp, nextPlayer);
+                }
+                break;
 
-
-            // Promotion si besoin
-            handlePromotion(tmp, i2, j2, player);
-
-            // Filtrer : ne garder que les coups qui éliminent l’échec
-            if (isInCheck(tmp, player))
-              continue;
-
-            // Ce coup est légal → on l’ajoute
-            Item* child = nodeAlloc();
-            memcpy(child->board, tmp, sizeof(tmp));
-            child->player = (player == 'w') ? 'b' : 'w';
-            child->depth  = 0;
-            child->parent = NULL;
-
-            // Copier les indicateurs de roque (à adapter si tu stockes ces flags ailleurs)
-            if (player == 'w') {
-              child->whiteKingMoved          = (i == 7 && j == 4);
-              child->whiteKingsideRookMoved  = (i == 7 && j == 7);
-              child->whiteQueensideRookMoved = (i == 7 && j == 0);
-              child->blackKingMoved = child->blackKingsideRookMoved = child->blackQueensideRookMoved = 0;
-            } else {
-              child->blackKingMoved          = (i == 0 && j == 4);
-              child->blackKingsideRookMoved  = (i == 0 && j == 7);
-              child->blackQueensideRookMoved = (i == 0 && j == 0);
-              child->whiteKingMoved = child->whiteKingsideRookMoved = child->whiteQueensideRookMoved = 0;
+            case 'B': case 'R': case 'Q': {
+                int maxd = toupper(p.type)=='B'? 8 : 8;
+                int startd = (toupper(p.type)=='R')?0:0;
+                int endd   = (toupper(p.type)=='R')?4:8;
+                if (toupper(p.type)=='B') { startd=4; endd=8; }
+                for (int d = startd; d < endd; ++d) {
+                    int di = king_dirs[d][0], dj = king_dirs[d][1];
+                    for (int step = 1;; ++step) {
+                        int ni = i + di*step, nj = j + dj*step;
+                        if (ni<0||ni>7||nj<0||nj>7) break;
+                        if (board[ni][nj].color==player) break;
+                        memcpy(tmp, board, sizeof tmp);
+                        tmp[ni][nj] = p; tmp[i][j].type = tmp[i][j].color = ' ';
+                        add_move(&moveList, tmp, nextPlayer);
+                        if (board[ni][nj].color==enemy) break;
+                    }
+                }
+                break;
             }
-
-            // Insérer en tête
-            child->next = moveList;
-            moveList   = child;
-          }
+            case 'K':
+                for (int d = 0; d < 8; ++d) {
+                    int ni = i + king_dirs[d][0];
+                    int nj = j + king_dirs[d][1];
+                    if (ni<0||ni>7||nj<0||nj>7) continue;
+                    if (board[ni][nj].color==player) continue;
+                    memcpy(tmp, board, sizeof tmp);
+                    tmp[ni][nj] = p; tmp[i][j].type = tmp[i][j].color = ' ';
+                    add_move(&moveList, tmp, nextPlayer);
+                }
+                break;
+            }
         }
-      }
     }
 
-    // Roque : uniquement si on n’était pas déjà en échec
-    if (!kingInCheck) {
-      Item* currentItem = nodeAlloc();
-      memcpy(currentItem->board, board, sizeof(Piece) * 64);
-      currentItem->player = player;
-      // initialiser les flags de roque à 0 ou reprendre ceux du parent si disponibles...
-      currentItem->whiteKingMoved = currentItem->blackKingMoved =
-      currentItem->whiteKingsideRookMoved = currentItem->whiteQueensideRookMoved =
-      currentItem->blackKingsideRookMoved = currentItem->blackQueensideRookMoved = 0;
-
-      tryCastling(board, player, currentItem, &moveList);
-      free(currentItem);
-    }
+    // enfin, le roque
+    Item* scratch = nodeAlloc();
+    memcpy(scratch->board, board, sizeof board);
+    scratch->player = player;
+    scratch->whiteKingMoved = scratch->whiteKingsideRookMoved = scratch->whiteQueensideRookMoved =
+    scratch->blackKingMoved = scratch->blackKingsideRookMoved = scratch->blackQueensideRookMoved = 0;
+    tryCastling(board, player, scratch, &moveList);
+    free(scratch);
 
     return moveList;
 }
+
+
 
 
 int isInCheck(Piece board[8][8], char color) {
