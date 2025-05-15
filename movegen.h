@@ -13,6 +13,16 @@ int isCheckmate(Piece board[8][8], char player);
 int isStalemate(Piece board[8][8], char player);
 void add_castling_move(Piece temp[8][8], Item** list, Item* parent_state, char player, int kingside);
 
+int canPawnMove(Piece board[8][8], int from_i, int from_j, int to_i, int to_j);
+
+int canRookMove(Piece board[8][8], int from_i, int from_j, int to_i, int to_j) ;
+int canBishopMove(Piece board[8][8], int from_i, int from_j, int to_i, int to_j) ;
+int canQueenMove(Piece board[8][8], int from_i, int from_j, int to_i, int to_j) ;
+int canKnightMove(Piece board[8][8], int from_i, int from_j, int to_i, int to_j);
+int canKingMove(Piece board[8][8], int from_i, int from_j, int to_i, int to_j);
+
+int tryMove(Piece dst[8][8],Piece src[8][8],int i,int j,int i2,int j2);
+
 
 
 #endif

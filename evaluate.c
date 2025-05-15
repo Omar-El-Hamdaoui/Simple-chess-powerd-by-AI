@@ -21,6 +21,8 @@
 #define CENTER_CONTROL_BONUS    5
 #define DEVELOPMENT_BONUS       10
 
+
+
 int getPieceValue(char type) {
     switch(type) {
         case 'P': case 'p': return PAWN_VALUE;
@@ -159,7 +161,42 @@ int evaluate_king_safety(Piece board[8][8], char player) {
     return score;
 }
 
+int evaluate_threats(Piece board[8][8], char player) {
+    int score = 0;
+    Item* myMoves = generateMoves(board, player);
+    Item* opponentMoves = generateMoves(board, (player == 'w') ? 'b' : 'w');
 
+    // Si je menace une pièce ennemie
+    for (Item* m = myMoves; m != NULL; m = m->next) {
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                // Si la case contient ma pièce dans le coup généré, mais contenait une pièce ennemie avant
+                if (m->board[i][j].type != ' ' && m->board[i][j].color == player &&
+                    board[i][j].type != ' ' && board[i][j].color != player) {
+                    int value = getPieceValue(board[i][j].type);
+                    score += value / 10;  // pondération, tu peux ajuster (ex: /5 si tu veux plus agressif)
+                    }
+            }
+        }
+    }
+
+    // Si l’adversaire menace mes pièces
+    for (Item* m = opponentMoves; m != NULL; m = m->next) {
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                if (m->board[i][j].type != ' ' && m->board[i][j].color != player &&
+                    board[i][j].type != ' ' && board[i][j].color == player) {
+                    int value = getPieceValue(board[i][j].type);
+                    score -= value / 10;
+                    }
+            }
+        }
+    }
+
+    freeList(myMoves);
+    freeList(opponentMoves);
+    return score;
+}
 
 int evaluate(Piece board[8][8], char player) {
     int material = evaluate_material(board, player);
@@ -168,7 +205,8 @@ int evaluate(Piece board[8][8], char player) {
     int mobility = evaluate_mobility(board, player);
     int development = evaluate_development(board, player);
     int kingSafety = evaluate_king_safety(board, player);
+    int threats = evaluate_threats(board, player);
 
+    return material + center + pawns + mobility + threats+ development + kingSafety;
 
-    return material + center + pawns + mobility + development + kingSafety;
 }

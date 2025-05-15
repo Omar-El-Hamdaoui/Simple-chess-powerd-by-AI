@@ -38,44 +38,30 @@ int minimax(Piece board[8][8], int depth, char player, int maximizingPlayer, int
 
 
 Item* chooseBestMove(Piece board[8][8], char player, int depth) {
-    Item* moves = generateMoves(board, player);
-    Item* bestMove = NULL;
-    int bestValue = (player == 'w') ? INT_MIN : INT_MAX;
+    Item* moves     = generateMoves(board, player);
+    Item* best      = NULL;
+    int maximizing  = (player == 'w');
+    int bestScore   = maximizing ? INT_MIN : INT_MAX;
 
-    for (Item* move = moves; move != NULL; move = move->next) {
-        int eval = minimax(move->board, depth - 1, (player == 'w') ? 'b' : 'w', 0, -100000, 100000);
+    for (Item* m = moves; m != NULL; m = m->next) {
+        // Appel à la version alpha-beta de minimax
+        int score = minimax(
+            m->board,
+            depth - 1,
+            (player == 'w') ? 'b' : 'w',
+            !maximizing,
+            INT_MIN,
+            INT_MAX
+        );
 
-        if (player == 'w') {
-            if (eval > bestValue) {
-                bestValue = eval;
-                bestMove = move;
+        if ((maximizing && score > bestScore) ||
+            (!maximizing && score < bestScore)) {
+            bestScore = score;
+            best      = m;
             }
-        } else {
-            if (eval < bestValue) {
-                bestValue = eval;
-                bestMove = move;
-            }
-        }
     }
 
-    if (bestMove != NULL) {
-        Item* chosen = nodeAlloc();
-        for (int i = 0; i < 8; i++) {
-            for (int j = 0; j < 8; j++) {
-                chosen->board[i][j] = bestMove->board[i][j];
-            }
-        }
-        chosen->player = (player == 'w') ? 'b' : 'w';
-        chosen->depth = 0;
-        chosen->next = NULL;
-
-        freeList(moves);
-
-        return chosen;
-    }
-
-    // 🧹 Libérer même si aucun meilleur coup trouvé
-    freeList(moves);
-
-    return NULL;
+    // On retourne l'Item choisi (ou NULL si aucun coup)
+    return best;
 }
+

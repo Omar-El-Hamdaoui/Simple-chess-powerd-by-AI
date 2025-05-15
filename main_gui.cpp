@@ -1,76 +1,226 @@
 #include <SFML/Graphics.hpp>
+#include <iostream>
+#include <cstring>
 #include <map>
-#include <string>
+#include <vector>
+#include <cctype>
 
-const int SQUARE_SIZE = 75;
-const int BOARD_SIZE = 8;
+extern "C" {
+    #include "board.h"
+    #include "movegen.h"
+    #include "ai.h"
+    #include "list.h"
+}
 
-// Utilisation de lettres standards pour les pièces
-const char board[8][8] = {
-    {'r','n','b','q','k','b','n','r'},
-    {'p','p','p','p','p','p','p','p'},
-    {' ',' ',' ',' ',' ',' ',' ',' '},
-    {' ',' ',' ',' ',' ',' ',' ',' '},
-    {' ',' ',' ',' ',' ',' ',' ',' '},
-    {' ',' ',' ',' ',' ',' ',' ',' '},
-    {'P','P','P','P','P','P','P','P'},
-    {'R','N','B','Q','K','B','N','R'},
-};
+const int TILE_SIZE  = 80;
 
-std::string getImageFilename(char piece) {
-    if (piece == ' ') return "";
-    std::string filename;
-    filename += (isupper(piece) ? 'w' : 'b');
-    filename += tolower(piece);
-    return "img/" + filename + ".png";
+// Charge la texture par caractère de pièce
+sf::Texture loadPieceTexture(char piece) {
+    sf::Texture texture;
+    std::string path = "img/";
+    path += (std::isupper(piece) ? 'w' : 'b');
+    path += std::tolower(piece);
+    path += ".png";
+    if (!texture.loadFromFile(path)) {
+        std::cerr << "Erreur de chargement: " << path << "\n";
+    }
+    return texture;
+}
+
+// Dessine le plateau + pièces + highlights
+void drawBoard(sf::RenderWindow& window,
+               Piece board[BOARD_SIZE][BOARD_SIZE],
+               std::map<char, sf::Texture>& textures,
+               bool selected[BOARD_SIZE][BOARD_SIZE],
+               bool legal[BOARD_SIZE][BOARD_SIZE])
+{
+    window.clear(sf::Color::White);
+
+    for (int i = 0; i < BOARD_SIZE; ++i) {
+        for (int j = 0; j < BOARD_SIZE; ++j) {
+            sf::RectangleShape sq({float(TILE_SIZE), float(TILE_SIZE)});
+            sq.setPosition(j * TILE_SIZE, i * TILE_SIZE);
+
+            if (selected[i][j]) {
+                sq.setFillColor(sf::Color(50,200,50,180));
+            } else if (legal[i][j]) {
+                sq.setFillColor(sf::Color(200,200,50,120));
+            } else {
+                bool light = ((i + j) % 2) == 0;
+                sq.setFillColor(
+                  light
+                    ? sf::Color(240,217,181)
+                    : sf::Color(181,136,99)
+                );
+            }
+            window.draw(sq);
+
+            char t = board[i][j].type;
+            if (t != ' ') {
+                sf::Sprite spr;
+                spr.setTexture(textures[t]);
+                auto sz = spr.getTexture()->getSize();
+                spr.setOrigin(sz.x/2.f, sz.y/2.f);
+                spr.setPosition(
+                  j * TILE_SIZE + TILE_SIZE/2.f,
+                  i * TILE_SIZE + TILE_SIZE/2.f
+                );
+                window.draw(spr);
+            }
+        }
+    }
+    window.display();
 }
 
 int main() {
-    sf::RenderWindow window(sf::VideoMode(SQUARE_SIZE * BOARD_SIZE, SQUARE_SIZE * BOARD_SIZE), "MiniChess - Echiquier");
+    char selType  = ' ', selColor = ' ';
 
+    sf::RenderWindow window(
+        sf::VideoMode(TILE_SIZE * BOARD_SIZE,
+                      TILE_SIZE * BOARD_SIZE),
+        "MiniChess SFML - Joueur vs IA"
+    );
+
+    // 1) Initialise le plateau
+    Piece board[BOARD_SIZE][BOARD_SIZE];
+    initBoard(board);
+    char currentPlayer = 'w';  // le joueur humain contrôle les blancs
+
+    // 2) Charge les textures
     std::map<char, sf::Texture> textures;
-    std::map<char, sf::Sprite> sprites;
-
-    // Charger les images
-    std::string allPieces = "rnbqkpRNBQKP";
-    for (char p : allPieces) {
-        std::string path = getImageFilename(p);
-        if (!textures[p].loadFromFile(path)) {
-            printf("Erreur chargement image : %s\n", path.c_str());
-            return 1;
-        }
-        sprites[p].setTexture(textures[p]);
-        sprites[p].setScale(
-            float(SQUARE_SIZE) / textures[p].getSize().x,
-            float(SQUARE_SIZE) / textures[p].getSize().y
-        );
+    std::vector<char> pieces = {
+        'P','R','N','B','Q','K',
+        'p','r','n','b','q','k'
+    };
+    for (char p : pieces) {
+        textures[p] = loadPieceTexture(p);
     }
 
+    // 3) Variables de sélection & highlights
+    bool haveSelection = false;
+    int  sel_i = -1, sel_j = -1;
+    bool legal[BOARD_SIZE][BOARD_SIZE]    = {{false}};
+    bool selected[BOARD_SIZE][BOARD_SIZE] = {{false}};
+
+    // Affichage initial
+    drawBoard(window, board, textures, selected, legal);
+
+    // Boucle principale
     while (window.isOpen()) {
+        // ─ Gestion des événements ───────────────────────
         sf::Event event;
         while (window.pollEvent(event)) {
             if (event.type == sf::Event::Closed)
                 window.close();
+
+            else if (event.type == sf::Event::MouseButtonPressed &&
+         event.mouseButton.button == sf::Mouse::Left &&
+         currentPlayer == 'w')
+{
+    int x = event.mouseButton.x / TILE_SIZE;
+    int y = event.mouseButton.y / TILE_SIZE;
+
+    // Si on n'avait pas encore de sélection, on ne change rien
+    if (!haveSelection) {
+        if (x>=0 && x<BOARD_SIZE && y>=0 && y<BOARD_SIZE &&
+            board[y][x].type!=' ' && board[y][x].color=='w')
+        {
+            haveSelection = true;
+            sel_i = y; sel_j = x;
         }
-
-        window.clear();
-
-        for (int i = 0; i < BOARD_SIZE; i++) {
-            for (int j = 0; j < BOARD_SIZE; j++) {
-                sf::RectangleShape square(sf::Vector2f(SQUARE_SIZE, SQUARE_SIZE));
-                square.setPosition(j * SQUARE_SIZE, i * SQUARE_SIZE);
-                square.setFillColor((i + j) % 2 == 0 ? sf::Color(240, 217, 181) : sf::Color(181, 136, 99));
-                window.draw(square);
-
-                char piece = board[i][j];
-                if (piece != ' ') {
-                    sprites[piece].setPosition(j * SQUARE_SIZE, i * SQUARE_SIZE);
-                    window.draw(sprites[piece]);
+    }
+    else {
+        // 1) Re-sélection d'une autre pièce blanche
+        if (x>=0 && x<BOARD_SIZE && y>=0 && y<BOARD_SIZE &&
+            board[y][x].type!=' ' && board[y][x].color=='w')
+        {
+            sel_i = y; sel_j = x;
+        }
+        // 2) Clic sur une case vide **et** légale => on joue
+        else if (x>=0 && x<BOARD_SIZE && y>=0 && y<BOARD_SIZE && legal[y][x])
+        {
+            // on applique directement le coup (via generateMoves)
+            bool valid = false;
+            Item* moves = generateMoves(board,'w');
+            for (Item* m = moves; m; m = m->next) {
+                if ( m->board[sel_i][sel_j].type==' ' &&
+                     m->board[y][x].type  == board[sel_i][sel_j].type &&
+                     m->board[y][x].color == 'w')
+                {
+                    std::memcpy(board, m->board, sizeof(board));
+                    valid = true;
+                    break;
                 }
             }
+            freeList(moves);
+
+            // on désélectionne quoiqu’il arrive
+            haveSelection = false;
+            std::memset(selected,0,sizeof(selected));
+            std::memset(legal,   0,sizeof(legal));
+
+            if (valid) {
+                drawBoard(window, board, textures, selected, legal);
+                sf::sleep(sf::milliseconds(150));
+                currentPlayer = 'b';
+            }
+        }
+        // 3) Dans tous les autres cas (clic hors-échièquier ou case vide non-légale)
+        //    on annule la sélection
+        else {
+            haveSelection = false;
+            std::memset(selected,0,sizeof(selected));
+            std::memset(legal,   0,sizeof(legal));
+        }
+    }
+}
+
         }
 
-        window.display();
+        // ─ Tour de l'IA ───────────────────────────────────
+        if (currentPlayer == 'b') {
+            Item* best = chooseBestMove(board, 'b', 1);
+            if (best) {
+                std::memcpy(board, best->board, sizeof(board));
+                free(best);
+            }
+            currentPlayer = 'w';
+            drawBoard(window, board, textures, selected, legal);
+            sf::sleep(sf::milliseconds(150));
+        }
+
+        // ─ Recalcul des highlights si sélection active ─────
+        if (haveSelection) {
+            std::memset(legal,    0, sizeof(legal));
+            std::memset(selected, 0, sizeof(selected));
+            selected[sel_i][sel_j] = true;
+
+            Item* moves = generateMoves(board, 'w');
+            for (Item* m = moves; m; m = m->next) {
+                // le coup doit vider la case d'origine
+                if (m->board[sel_i][sel_j].type != ' ')
+                    continue;
+                // on ne marque que la case vide-->occupée par la même pièce
+                for (int i = 0; i < 8; ++i) {
+                    for (int j = 0; j < 8; ++j) {
+                        bool wasEnemy = (board[i][j].type != ' ' && board[i][j].color == 'b'); // ici 'b' = adversaire
+                        bool wasEmpty = (board[i][j].type == ' ');
+                        // après le coup, c'est toujours la même pièce qu'on a sélectionnée
+                        bool isOurPiece = (m->board[i][j].type  == board[sel_i][sel_j].type &&
+                                           m->board[i][j].color == 'w');
+                        if ((wasEmpty || wasEnemy) && isOurPiece) {
+                            legal[i][j] = true;
+                        }
+                    }
+                }
+            }
+            freeList(moves);
+
+            drawBoard(window, board, textures, selected, legal);
+        }
+
+        // ─ Petit délai pour ne pas boucler à fond ─────────
+        sf::sleep(sf::milliseconds(30));
     }
 
     return 0;
