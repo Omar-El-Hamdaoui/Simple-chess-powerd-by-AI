@@ -1,3 +1,5 @@
+#include "item.h"
+
 Item* nodeAlloc() {
     Item* node = (Item*)malloc(sizeof(Item));
     if (node == NULL) {

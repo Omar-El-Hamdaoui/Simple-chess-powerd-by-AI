@@ -8,6 +8,13 @@
 #include "movegen.h"
 #include "evaluate.h"
 #include "list.h"
+#include "tt.h"
+#include "zobrist.h"
+
+void ai_init(void) {
+    init_zobrist();
+    tt_init();
+}
 
 static int cmp_desc(const void* a, const void* b) {
     const Item* A = *(Item* const*)a;
@@ -27,80 +34,73 @@ static int cmp_asc(const void* a, const void* b) {
 
 int minimax_ab(Piece board[8][8], int depth, char player,
                int maximizingPlayer, int alpha, int beta) {
-    if (depth == 0) return evaluate(board, player);
+    if (depth == 0)
+        return evaluate(board, player);
 
     Item* moves = generateMoves(board, player);
-    if (moves == NULL) return evaluate(board, player);
-
-    // 1) Mettre les Item* dans un tableau
-    int cnt = 0;
-    for (Item* m = moves; m; m = m->next) cnt++;
-    Item** arr = malloc(cnt * sizeof(Item*));
-    int i = 0;
-    for (Item* m = moves; m; m = m->next)
-        arr[i++] = m;
-
-    // 2) Trier selon maximizing/minimizing
-    qsort(arr, cnt, sizeof(Item*),
-          maximizingPlayer ? cmp_desc : cmp_asc);
+    if (!moves)  // pas de coups → mat ou pat
+        return isInCheck(board, player)
+             ? (maximizingPlayer ? INT_MIN : INT_MAX)  // mat
+             : 0;                                      // pat
 
     int value = maximizingPlayer ? INT_MIN : INT_MAX;
-    for (i = 0; i < cnt; i++) {
-        Item* m = arr[i];
-        int score = minimax_ab(m->board, depth - 1,
-            (player=='w')?'b':'w',
-            !maximizingPlayer,
-            alpha, beta);
+    for (Item* m = moves; m; m = m->next) {
+        // **NOUVEAU** : rejeter tout coup laissant roi en échec
+        if (isInCheck(m->board, player))
+            continue;
 
+        int score = minimax_ab(
+            m->board,
+            depth - 1,
+            (player=='w') ? 'b' : 'w',
+            !maximizingPlayer,
+            alpha, beta
+        );
         if (maximizingPlayer) {
-            if (score > value) value = score;
-            if (value > alpha) alpha = value;
+            value = (score > value) ? score : value;
+            alpha = (alpha > value) ? alpha : value;
         } else {
-            if (score < value) value = score;
-            if (value < beta) beta = value;
+            value = (score < value) ? score : value;
+            beta  = (beta  < value) ? beta  : value;
         }
-        if (alpha >= beta) break;  // coupure
+        if (alpha >= beta) break;
     }
 
-    free(arr);
     freeList(moves);
     return value;
 }
 
+
+
 Item* chooseBestMove(Piece board[8][8], char player, int depth) {
     Item* bestMove = NULL;
-    int bestScore = (player=='w') ? INT_MIN : INT_MAX;
+    int   bestScore = (player=='w') ? INT_MIN : INT_MAX;
 
     Item* moves = generateMoves(board, player);
     if (!moves) return NULL;
 
-    // même logique de tri avant de choisir
-    int cnt = 0;
-    for (Item* m = moves; m; m = m->next) cnt++;
-    Item** arr = malloc(cnt * sizeof(Item*));
-    int i = 0;
-    for (Item* m = moves; m; m = m->next)
-        arr[i++] = m;
-    qsort(arr, cnt, sizeof(Item*),
-          (player=='w') ? cmp_desc : cmp_asc);
+    for (Item* m = moves; m; m = m->next) {
+        if (isInCheck(m->board, player))
+            continue;
 
-    for (i = 0; i < cnt; i++) {
-        printf("chooseBestMove(depth=%d) : %d coups légaux générés pour %c\n",
-       depth, cnt, player);
-        Item* m = arr[i];
-        int score = minimax_ab(m->board, depth - 1,
-            (player=='w')?'b':'w',
-            player=='b', INT_MIN, INT_MAX);
+        int score = minimax_ab(
+            m->board,
+            depth - 1,
+            (player=='w') ? 'b' : 'w',
+            player=='b',
+            INT_MIN, INT_MAX
+        );
+
         if ((player=='w' && score > bestScore) ||
             (player=='b' && score < bestScore)) {
             bestScore = score;
             if (bestMove) free(bestMove);
             bestMove = nodeAlloc();
             memcpy(bestMove->board, m->board, sizeof(bestMove->board));
-        }
+            }
     }
 
-    free(arr);
     freeList(moves);
     return bestMove;
 }
+

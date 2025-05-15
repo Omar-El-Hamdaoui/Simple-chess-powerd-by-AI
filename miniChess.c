@@ -7,12 +7,13 @@
 #include "movegen.h"
 
 int main() {
+    ai_init();
     Piece board[8][8];
     initBoard(board);         // Initialise le plateau de départ
     printBoard(board);        // Affiche le plateau initial
 
     char currentPlayer = 'w'; // Les blancs commencent
-    int maxMoves = 10;        // Nombre de coups maximum à simuler
+    int maxMoves = 70;        // Nombre de coups maximum à simuler
     int depth = 2;            // Profondeur de l'IA
 
     for (int moveNumber = 1; moveNumber <= maxMoves; moveNumber++) {

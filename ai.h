@@ -15,4 +15,6 @@ int minimax_ab(Piece board[8][8],
 // Choisit le meilleur coup pour `player` à la profondeur donnée
 Item* chooseBestMove(Piece board[8][8], char player, int depth);
 
+void ai_init(void);
+
 #endif // AI_H
