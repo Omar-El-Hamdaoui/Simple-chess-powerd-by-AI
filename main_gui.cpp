@@ -12,9 +12,9 @@ extern "C" {
     #include "list.h"
 }
 
-const int TILE_SIZE  = 80;
+const int TILE_SIZE = 80;
 
-// Charge la texture par caractère de pièce
+// Charge une texture pour une pièce donnée
 sf::Texture loadPieceTexture(char piece) {
     sf::Texture texture;
     std::string path = "img/";
@@ -27,7 +27,7 @@ sf::Texture loadPieceTexture(char piece) {
     return texture;
 }
 
-// Dessine le plateau + pièces + highlights
+// Dessine le plateau, les pièces et les surbrillances
 void drawBoard(sf::RenderWindow& window,
                Piece board[BOARD_SIZE][BOARD_SIZE],
                std::map<char, sf::Texture>& textures,
@@ -35,7 +35,6 @@ void drawBoard(sf::RenderWindow& window,
                bool legal[BOARD_SIZE][BOARD_SIZE])
 {
     window.clear(sf::Color::White);
-
     for (int i = 0; i < BOARD_SIZE; ++i) {
         for (int j = 0; j < BOARD_SIZE; ++j) {
             sf::RectangleShape sq({float(TILE_SIZE), float(TILE_SIZE)});
@@ -74,7 +73,13 @@ void drawBoard(sf::RenderWindow& window,
 
 int main() {
     ai_init();
-    char selType  = ' ', selColor = ' ';
+
+    // Charge la font système DejaVu Sans
+    sf::Font font;
+    if (!font.loadFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")) {
+        std::cerr << "Impossible de charger la police système !\n";
+        return 1;
+    }
 
     sf::RenderWindow window(
         sf::VideoMode(TILE_SIZE * BOARD_SIZE,
@@ -82,12 +87,12 @@ int main() {
         "MiniChess SFML - Joueur vs IA"
     );
 
-    // 1) Initialise le plateau
+    // Init du plateau
     Piece board[BOARD_SIZE][BOARD_SIZE];
     initBoard(board);
-    char currentPlayer = 'w';  // le joueur humain contrôle les blancs
+    char currentPlayer = 'w';  // humain = blanc
 
-    // 2) Charge les textures
+    // Charge les textures
     std::map<char, sf::Texture> textures;
     std::vector<char> pieces = {
         'P','R','N','B','Q','K',
@@ -97,131 +102,165 @@ int main() {
         textures[p] = loadPieceTexture(p);
     }
 
-    // 3) Variables de sélection & highlights
+    // Sélection & surbrillances
     bool haveSelection = false;
-    int  sel_i = -1, sel_j = -1;
+    int sel_i = -1, sel_j = -1;
     bool legal[BOARD_SIZE][BOARD_SIZE]    = {{false}};
     bool selected[BOARD_SIZE][BOARD_SIZE] = {{false}};
 
-    // Affichage initial
     drawBoard(window, board, textures, selected, legal);
 
-    // Boucle principale
+    bool gameOver = false;
+    std::string endMessage;
+
     while (window.isOpen()) {
-        // ─ Gestion des événements ───────────────────────
-        sf::Event event;
-        while (window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed)
+        sf::Event ev;
+        while (window.pollEvent(ev)) {
+            if (ev.type == sf::Event::Closed)
                 window.close();
 
-            else if (event.type == sf::Event::MouseButtonPressed &&
-         event.mouseButton.button == sf::Mouse::Left &&
-         currentPlayer == 'w')
-{
-    int x = event.mouseButton.x / TILE_SIZE;
-    int y = event.mouseButton.y / TILE_SIZE;
+            // tant que la partie n'est pas finie, on gère le clic blanc
+            if (ev.type == sf::Event::MouseButtonPressed &&
+            ev.mouseButton.button == sf::Mouse::Left &&
+            currentPlayer == 'w')
+            {
+                int x = ev.mouseButton.x / TILE_SIZE;
+                int y = ev.mouseButton.y / TILE_SIZE;
 
-    // Si on n'avait pas encore de sélection, on ne change rien
-    if (!haveSelection) {
-        if (x>=0 && x<BOARD_SIZE && y>=0 && y<BOARD_SIZE &&
-            board[y][x].type!=' ' && board[y][x].color=='w')
-        {
-            haveSelection = true;
-            sel_i = y; sel_j = x;
-        }
-    }
-    else {
-        // 1) Re-sélection d'une autre pièce blanche
-        if (x>=0 && x<BOARD_SIZE && y>=0 && y<BOARD_SIZE &&
-            board[y][x].type!=' ' && board[y][x].color=='w')
-        {
-            sel_i = y; sel_j = x;
-        }
-        // 2) Clic sur une case vide **et** légale => on joue
-        else if (x>=0 && x<BOARD_SIZE && y>=0 && y<BOARD_SIZE && legal[y][x])
-        {
-            // on applique directement le coup (via generateMoves)
-            bool valid = false;
-            Item* moves = generateMoves(board,'w');
-            for (Item* m = moves; m; m = m->next) {
-                if ( m->board[sel_i][sel_j].type==' ' &&
-                     m->board[y][x].type  == board[sel_i][sel_j].type &&
-                     m->board[y][x].color == 'w')
-                {
-                    std::memcpy(board, m->board, sizeof(board));
-                    valid = true;
-                    break;
+                const bool inBoard = (x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE);
+
+                if (!haveSelection) {
+                    // 1) On n’a rien de sélectionné → seul un clic sur une pièce blanche la prend
+                    if (inBoard && board[y][x].type != ' ' && board[y][x].color == 'w') {
+                        haveSelection = true;
+                        sel_i = y;
+                        sel_j = x;
+                    }
+                } else {
+                    // 2a) Clic sur une autre pièce blanche → on change la sélection
+                    if (inBoard && board[y][x].type != ' ' && board[y][x].color == 'w') {
+                        sel_i = y;
+                        sel_j = x;
+                    }
+                    // 2b) Clic sur une case vide **et** légale → on joue le coup
+                    else if (inBoard && legal[y][x]) {
+                        bool valid = false;
+                        Item* moves = generateMoves(board, 'w');
+                        for (Item* m = moves; m; m = m->next) {
+                            // on vérifie que la pièce sélectionnée a disparu de sel_i/sel_j
+                            // et qu’elle est apparue en y/x
+                            if (m->board[sel_i][sel_j].type == ' ' &&
+                                m->board[y][x].color == 'w' &&
+                                m->board[y][x].type == board[sel_i][sel_j].type)
+                            {
+                                std::memcpy(board, m->board, sizeof(board));
+                                valid = true;
+                                break;
+                            }
+                        }
+                        freeList(moves);
+
+                        // on désélectionne *quoiqu’il arrive*
+                        haveSelection = false;
+                        std::memset(selected, 0, sizeof(selected));
+                        std::memset(legal,    0, sizeof(legal));
+
+
+
+                        if (valid) {
+                            drawBoard(window, board, textures, selected, legal);
+                            sf::sleep(sf::milliseconds(150));
+                            // test échec & mat / pat...
+                            char opp = 'b';
+                            if (isCheckmate(board, opp)) {
+                                endMessage = "Échec et mat, Blancs gagnent !";
+                                gameOver = true;
+                            } else if (isStalemate(board, opp)) {
+                                endMessage = "Pat !";
+                                gameOver = true;
+                            } else {
+                                currentPlayer = 'b';
+                            }
+                        }
+                    }
+                    else {
+                        haveSelection = false;
+                        memset(selected, 0, sizeof(selected));
+                        memset(legal,    0, sizeof(legal));
+                    }
                 }
             }
-            freeList(moves);
-
-            // on désélectionne quoiqu’il arrive
-            haveSelection = false;
-            std::memset(selected,0,sizeof(selected));
-            std::memset(legal,   0,sizeof(legal));
-
-            if (valid) {
-                drawBoard(window, board, textures, selected, legal);
-                sf::sleep(sf::milliseconds(150));
-                currentPlayer = 'b';
-            }
-        }
-        // 3) Dans tous les autres cas (clic hors-échièquier ou case vide non-légale)
-        //    on annule la sélection
-        else {
-            haveSelection = false;
-            std::memset(selected,0,sizeof(selected));
-            std::memset(legal,   0,sizeof(legal));
-        }
-    }
-}
-
         }
 
-        // ─ Tour de l'IA ───────────────────────────────────
-        if (currentPlayer == 'b') {
+        // Tour IA
+        if (!gameOver && currentPlayer == 'b') {
             Item* best = chooseBestMove(board, 'b', 3);
             if (best) {
                 std::memcpy(board, best->board, sizeof(board));
                 free(best);
             }
-            currentPlayer = 'w';
             drawBoard(window, board, textures, selected, legal);
             sf::sleep(sf::milliseconds(150));
+            // test fin
+            char opp = 'w';
+            if (isCheckmate(board, opp)) {
+                endMessage = "Echec et mat, Noirs gagnent !";
+                gameOver = true;
+            } else if (isStalemate(board, opp)) {
+                endMessage = "Pat !";
+                gameOver = true;
+            } else {
+                currentPlayer = 'w';
+            }
         }
 
-        // ─ Recalcul des highlights si sélection active ─────
-        if (haveSelection) {
+        // surbrillance des coups légaux (après sélection)
+        if (!gameOver && haveSelection) {
             std::memset(legal,    0, sizeof(legal));
             std::memset(selected, 0, sizeof(selected));
             selected[sel_i][sel_j] = true;
-
             Item* moves = generateMoves(board, 'w');
             for (Item* m = moves; m; m = m->next) {
-                // le coup doit vider la case d'origine
-                if (m->board[sel_i][sel_j].type != ' ')
-                    continue;
-                // on ne marque que la case vide-->occupée par la même pièce
-                for (int i = 0; i < 8; ++i) {
-                    for (int j = 0; j < 8; ++j) {
-                        bool wasEnemy = (board[i][j].type != ' ' && board[i][j].color == 'b'); // ici 'b' = adversaire
-                        bool wasEmpty = (board[i][j].type == ' ');
-                        // après le coup, c'est toujours la même pièce qu'on a sélectionnée
-                        bool isOurPiece = (m->board[i][j].type  == board[sel_i][sel_j].type &&
-                                           m->board[i][j].color == 'w');
-                        if ((wasEmpty || wasEnemy) && isOurPiece) {
-                            legal[i][j] = true;
-                        }
-                    }
+                if (m->board[sel_i][sel_j].type!=' ') continue;
+                for (int i = 0; i < BOARD_SIZE; ++i)
+                for (int j = 0; j < BOARD_SIZE; ++j) {
+                    bool wasEmpty = (board[i][j].type==' ');
+                    bool wasEnemy = (board[i][j].type!=' ' && board[i][j].color=='b');
+                    bool isOur   = (m->board[i][j].color=='w');
+                    if ((wasEmpty||wasEnemy) && isOur)
+                        legal[i][j] = true;
                 }
             }
             freeList(moves);
-
             drawBoard(window, board, textures, selected, legal);
         }
 
-        // ─ Petit délai pour ne pas boucler à fond ─────────
-        sf::sleep(sf::milliseconds(30));
+        // si gameOver, on affiche le message et on passe en attente de fermeture
+        if (gameOver) {
+            // affiche le plateau final
+            drawBoard(window, board, textures, selected, legal);
+
+            // crée et positionne le texte
+            sf::Text text(endMessage, font, 36);
+            text.setFillColor(sf::Color::Red);
+            // centre
+            sf::FloatRect bounds = text.getLocalBounds();
+            text.setPosition(
+                (window.getSize().x - bounds.width)/2 - bounds.left,
+                (window.getSize().y - bounds.height)/2 - bounds.top
+            );
+            window.draw(text);
+            window.display();
+
+            // attend la fermeture manuelle
+            sf::Event ev2;
+            while (window.isOpen()) {
+                while (window.pollEvent(ev2))
+                    if (ev2.type == sf::Event::Closed)
+                        window.close();
+                sf::sleep(sf::milliseconds(100));
+            }
+        }
     }
 
     return 0;

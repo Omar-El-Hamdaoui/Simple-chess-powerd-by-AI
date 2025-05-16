@@ -73,22 +73,26 @@ int minimax_ab(Piece board[8][8], int depth, char player,
 
 
 Item* chooseBestMove(Piece board[8][8], char player, int depth) {
-    Item* bestMove = NULL;
+    Item* bestMove  = NULL;
     int   bestScore = (player=='w') ? INT_MIN : INT_MAX;
 
+    // Récupère tous les coups légaux (générés sans laisser son roi en échec)
     Item* moves = generateMoves(board, player);
     if (!moves) return NULL;
 
     for (Item* m = moves; m; m = m->next) {
+        // --- **NOUVEAU** : on rejette tout coup qui laisserait
+        //                  le roi en échec
         if (isInCheck(m->board, player))
             continue;
 
         int score = minimax_ab(
             m->board,
-            depth - 1,
+            depth-1,
             (player=='w') ? 'b' : 'w',
             player=='b',
-            INT_MIN, INT_MAX
+            INT_MIN,
+            INT_MAX
         );
 
         if ((player=='w' && score > bestScore) ||
@@ -103,4 +107,5 @@ Item* chooseBestMove(Piece board[8][8], char player, int depth) {
     freeList(moves);
     return bestMove;
 }
+
 

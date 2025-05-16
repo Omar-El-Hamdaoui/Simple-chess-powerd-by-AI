@@ -2,6 +2,9 @@
 #include <string.h>
 #include <stdbool.h>
 #include "movegen.h"
+
+#include <ctype.h>
+
 #include "item.h"
 #include "list.h"
 #include "evaluate.h"
@@ -17,22 +20,20 @@ static const int king_dirs[8][2] = {
     {+1,+1},{+1,-1},{-1,+1},{-1,-1}
 };
 
-static void add_move(Item** list,
-                     Piece tmp[8][8],
-                     char playerWhoJustMoved)
-{
-    // Si, après le coup, le roi **de celui qui vient de jouer** est en échec,
-    // on rejette le coup.
-    if (isInCheck(tmp, playerWhoJustMoved))
+static void add_move(Item** list, Piece tmp[8][8], char playerWhoMoved) {
+    // Si, après ce coup, **son** roi est en échec, on rejette
+    if (isInCheck(tmp, playerWhoMoved))
         return;
 
     Item* it = nodeAlloc();
     memcpy(it->board, tmp, sizeof it->board);
-    // C’est au camp adverse de jouer ensuite
-    it->player = (playerWhoJustMoved == 'w') ? 'b' : 'w';
+    // On stocke qui doit jouer ensuite
+    it->player = (playerWhoMoved == 'w') ? 'b' : 'w';
     it->next   = *list;
     *list      = it;
 }
+
+
 
 
 
