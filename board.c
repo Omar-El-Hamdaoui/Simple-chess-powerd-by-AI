@@ -217,3 +217,29 @@ int moveKing(Piece board[8][8], int from_row, int from_col, int to_row, int to_c
 
 
 
+void fenToBoard(const char *fen, Piece board[8][8]) {
+    int row = 0, col = 0;
+    for (const char *p = fen; *p && row < 8; ++p) {
+        if (*p == '/') {
+            ++row;
+            col = 0;
+        } else if (isdigit((unsigned char)*p)) {
+            int empty = *p - '0';
+            for (int i = 0; i < empty; ++i)
+                board[row][col++] = (Piece){ ' ', ' ' };
+        } else {
+            char type = *p;
+            char color = isupper((unsigned char)type) ? 'w' : 'b';
+            board[row][col++] = (Piece){ type, color };
+        }
+    }
+    // Tout ce qui reste devient vide
+    while (row < 8) {
+        while (col < 8)
+            board[row][col++] = (Piece){ ' ', ' ' };
+        ++row; col = 0;
+    }
+}
+
+
+

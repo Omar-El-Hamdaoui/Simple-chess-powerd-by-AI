@@ -1,41 +1,34 @@
-# Compilateurs et flags
-CC      = gcc
-CXX     = g++
-CFLAGS  = -Wall -g
-CXXFLAGS= -Wall -g
-LDFLAGS = -lsfml-graphics -lsfml-window -lsfml-system
+# --- Variables ---
+CC      := gcc
+CFLAGS  := -Wall -g
+# Tes sources “métier”
+SRC     := miniChess.c board.c list.c ai.c movegen.c evaluate.c zobrist.c tt.c chess.c
+OBJS    := $(SRC:.c=.o)
 
-# Sources C et objets
-C_FILES  = board.c list.c ai.c movegen.c evaluate.c zobrist.c tt.c
-C_OBJS   = $(C_FILES:.c=.o)
-
-# Sources C++ pour l'UI
-GUI       = main_gui.cpp
-GUI_EXEC  = gui
-GUI_OBJ   = main_gui.o
-
-# Programme console
-MAIN      = miniChess
-MAIN_OBJ  = miniChess.o
+# Le CGI d’entrée
+CGI_EXEC := chess.cgi
 
 # Tout
-all: $(MAIN) $(GUI_EXEC)
+all: miniChess gui $(CGI_EXEC)
 
-# MiniChess (console)
-$(MAIN): $(MAIN_OBJ) $(C_OBJS)
+# console
+miniChess: miniChess.o board.o list.o ai.o movegen.o evaluate.o zobrist.o tt.o
 	$(CC) $(CFLAGS) -o $@ $^
 
-# GUI
-$(GUI_EXEC): $(GUI_OBJ) $(C_OBJS)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+# GUI (ton interface SFML)
+gui: main_gui.o board.o list.o ai.o movegen.o evaluate.o zobrist.o tt.o
+	g++ $(CFLAGS) -o $@ $^ -lsfml-graphics -lsfml-window -lsfml-system
 
-# Règles générales
+# CGI
+$(CGI_EXEC): chess.o cgic.o board.o list.o ai.o movegen.o evaluate.o zobrist.o tt.o
+	$(CC) $(CFLAGS) -o $@ $^
+
+# Règles génériques
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
 
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $<
+	g++ $(CFLAGS) -c $<
 
-# Nettoyage
 clean:
-	rm -f *.o $(MAIN) $(GUI_EXEC)
+	rm -f *.o miniChess gui $(CGI_EXEC)
