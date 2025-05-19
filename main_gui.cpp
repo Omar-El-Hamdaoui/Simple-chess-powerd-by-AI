@@ -183,6 +183,7 @@ int main() {
                         haveSelection = false;
                         std::memset(selected, 0, sizeof(selected));
                         std::memset(legal,    0, sizeof(legal));
+                        drawBoard(window, board, textures, selected, legal);
                     }
                 }
             }
@@ -190,7 +191,7 @@ int main() {
 
         // Tour IA
         if (!gameOver && currentPlayer == 'b') {
-            Item* best = chooseBestMove(board, 'b', 3);
+            Item* best = chooseBestMove(board, 'b', 5);
             if (best) {
                 std::memcpy(board, best->board, sizeof(board));
                 // Debug: promotion réelle noir
