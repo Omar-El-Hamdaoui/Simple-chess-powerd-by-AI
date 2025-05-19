@@ -170,7 +170,7 @@ int main() {
                             // test échec & mat / pat
                             char opp = 'b';
                             if (isCheckmate(board, opp)) {
-                                endMessage = "Échec et mat, Blancs gagnent !";
+                                endMessage = "Echec et mat, Blancs gagnent !";
                                 gameOver = true;
                             } else if (isStalemate(board, opp)) {
                                 endMessage = "Pat !";
@@ -205,7 +205,7 @@ int main() {
 
                 char opp = 'w';
                 if (isCheckmate(board, opp)) {
-                    endMessage = "Échec et mat, Noirs gagnent !";
+                    endMessage = "Echec et mat, Noirs gagnent !";
                     gameOver = true;
                 } else if (isStalemate(board, opp)) {
                     endMessage = "Pat !";
