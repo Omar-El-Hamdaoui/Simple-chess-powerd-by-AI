@@ -194,25 +194,41 @@ int main() {
 
         // Tour IA
         if (!gameOver && currentPlayer == 'b') {
-            Item* best = chooseBestMove(board, 'b', 7);
+            Item* best = chooseBestMove(board, 'b', 1);
             if (best) {
+                // --- l'IA joue son coup ---
                 std::memcpy(board, best->board, sizeof(board));
                 free(best);
+                drawBoard(window, board, textures, selected, legal);
+                sf::sleep(sf::milliseconds(150));
+
+                // on vérifie si, après ce coup, les blancs sont mat/pat
+                if (isCheckmate(board, 'w')) {
+                    endMessage = "Échec et mat, Noirs gagnent !";
+                    gameOver = true;
+                } else if (isStalemate(board, 'w')) {
+                    endMessage = "Pat !";
+                    gameOver = true;
+                } else {
+                    currentPlayer = 'w';
+                }
             }
-            drawBoard(window, board, textures, selected, legal);
-            sf::sleep(sf::milliseconds(150));
-            // test fin
-            char opp = 'w';
-            if (isCheckmate(board, opp)) {
-                endMessage = "Echec et mat, Noirs gagnent !";
+            else {
+                // --- pas de coup légal pour les noirs ---
+                if (isCheckmate(board, 'b')) {
+                    endMessage = "Échec et mat, Blancs gagnent !";
+                } else if (isStalemate(board, 'b')) {
+                    endMessage = "Pat !";
+                } else {
+                    // idéalement on n’arrive jamais ici, mais au cas où...
+                    endMessage = "Aucun coup possible pour les Noirs.";
+                }
                 gameOver = true;
-            } else if (isStalemate(board, opp)) {
-                endMessage = "Pat !";
-                gameOver = true;
-            } else {
-                currentPlayer = 'w';
+                // on dessine le plateau final et le message
+                drawBoard(window, board, textures, selected, legal);
             }
         }
+
 
         // surbrillance des coups légaux (après sélection)
         if (!gameOver && haveSelection) {

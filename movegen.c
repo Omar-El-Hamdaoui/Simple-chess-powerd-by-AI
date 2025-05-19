@@ -193,60 +193,51 @@ int isInCheck(Piece board[8][8], char color) {
 
 
 int tryCastling(Piece board[8][8], char player, Item* parent, Item** moveList) {
-    int row = (player == 'w') ? 7 : 0;
+    int row = (player=='w') ? 7 : 0;
+    char kingType = (player=='w') ? 'K' : 'k';
+    char rookType = (player=='w') ? 'R' : 'r';
 
-    // Roque côté roi (kingside)
-    if ((player == 'w' && !parent->whiteKingMoved && !parent->whiteKingsideRookMoved) ||
-        (player == 'b' && !parent->blackKingMoved && !parent->blackKingsideRookMoved)) {
+    // Le roi doit être à sa case d'origine
+    if (board[row][4].type != kingType) return 0;
 
-        if (board[row][5].type == ' ' && board[row][6].type == ' ' &&
-            !isInCheck(board, player)) {
-
-            Piece tempBoard[8][8];
-            memcpy(tempBoard, board, sizeof(Piece) * 64);
-
-            // Déplacer roi
-            tempBoard[row][6] = tempBoard[row][4];
-            tempBoard[row][4].type = ' ';
-            tempBoard[row][4].color = ' ';
-
-            // Déplacer tour
-            tempBoard[row][5] = tempBoard[row][7];
-            tempBoard[row][7].type = ' ';
-            tempBoard[row][7].color = ' ';
-
-            if (!isInCheck(tempBoard, player)) {
-                // 👇 ICI : appel à la fonction externe
-                add_castling_move(tempBoard, moveList, parent, player, 1); // kingside
-            }
-        }
+    // --- Roque côté roi ---
+    // 1) le roi et la tour n'ont pas bougé (flags parent)
+    // 2) la tour est **bien** à h1/h8
+    // 3) cases entre les deux vides
+    if (!(player=='w' ? parent->whiteKingMoved : parent->blackKingMoved)
+        && !(player=='w' ? parent->whiteKingsideRookMoved : parent->blackKingsideRookMoved)
+        && board[row][7].type == rookType
+        && board[row][5].type == ' '
+        && board[row][6].type == ' '
+        && !isInCheck(board, player))
+    {
+        Piece tmp[8][8];
+        memcpy(tmp, board, sizeof tmp);
+        // déplace roi et tour
+        tmp[row][6] = tmp[row][4];
+        tmp[row][4].type = tmp[row][4].color = ' ';
+        tmp[row][5] = tmp[row][7];
+        tmp[row][7].type = tmp[row][7].color = ' ';
+        // n’oubliez pas de propager les flags de roque dans child
+        add_castling_move(tmp, moveList, parent, player, 1);
     }
 
-    // Roque côté dame (queenside)
-    if ((player == 'w' && !parent->whiteKingMoved && !parent->whiteQueensideRookMoved) ||
-        (player == 'b' && !parent->blackKingMoved && !parent->blackQueensideRookMoved)) {
-
-        if (board[row][1].type == ' ' && board[row][2].type == ' ' && board[row][3].type == ' ' &&
-            !isInCheck(board, player)) {
-
-            Piece tempBoard[8][8];
-            memcpy(tempBoard, board, sizeof(Piece) * 64);
-
-            // Déplacer roi
-            tempBoard[row][2] = tempBoard[row][4];
-            tempBoard[row][4].type = ' ';
-            tempBoard[row][4].color = ' ';
-
-            // Déplacer tour
-            tempBoard[row][3] = tempBoard[row][0];
-            tempBoard[row][0].type = ' ';
-            tempBoard[row][0].color = ' ';
-
-            if (!isInCheck(tempBoard, player)) {
-                // 👇 ICI : appel à la fonction externe
-                add_castling_move(tempBoard, moveList, parent, player, 0); // queenside
-            }
-        }
+    // --- Roque côté dame (idem) ---
+    if (!(player=='w' ? parent->whiteKingMoved : parent->blackKingMoved)
+        && !(player=='w' ? parent->whiteQueensideRookMoved : parent->blackQueensideRookMoved)
+        && board[row][0].type == rookType
+        && board[row][1].type == ' '
+        && board[row][2].type == ' '
+        && board[row][3].type == ' '
+        && !isInCheck(board, player))
+    {
+        Piece tmp[8][8];
+        memcpy(tmp, board, sizeof tmp);
+        tmp[row][2] = tmp[row][4];
+        tmp[row][4].type = tmp[row][4].color = ' ';
+        tmp[row][3] = tmp[row][0];
+        tmp[row][0].type = tmp[row][0].color = ' ';
+        add_castling_move(tmp, moveList, parent, player, 0);
     }
 
     return 0;
