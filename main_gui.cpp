@@ -190,7 +190,7 @@ int main() {
 
         // Tour IA
         if (!gameOver && currentPlayer == 'b') {
-            Item* best = chooseBestMove(board, 'b', 1);
+            Item* best = chooseBestMove(board, 'b', 3);
             if (best) {
                 std::memcpy(board, best->board, sizeof(board));
                 // Debug: promotion réelle noir

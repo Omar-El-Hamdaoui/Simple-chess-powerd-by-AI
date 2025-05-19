@@ -35,7 +35,7 @@ static int cmp_asc(const void* a, const void* b) {
 int minimax_ab(Piece board[8][8], int depth, char player,
                int maximizingPlayer, int alpha, int beta) {
     if (depth == 0)
-        return evaluate(board, player);
+        return evaluate(board, 'w');
 
     Item* moves = generateMoves(board, player);
     if (!moves)  // pas de coups → mat ou pat
@@ -81,8 +81,6 @@ Item* chooseBestMove(Piece board[8][8], char player, int depth) {
     if (!moves) return NULL;
 
     for (Item* m = moves; m; m = m->next) {
-        // --- **NOUVEAU** : on rejette tout coup qui laisserait
-        //                  le roi en échec
         if (isInCheck(m->board, player))
             continue;
 
