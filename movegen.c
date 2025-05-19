@@ -159,7 +159,8 @@ int isInCheck(Piece board[8][8], char color) {
     // Trouver le roi
     for (int i = 0; i < 8 && king_row == -1; i++) {
         for (int j = 0; j < 8; j++) {
-            if (board[i][j].type == 'K' && board[i][j].color == color) {
+            if ((board[i][j].type == 'K' || board[i][j].type == 'k')
+        && board[i][j].color == color) {
                 king_row = i;
                 king_col = j;
                 break;

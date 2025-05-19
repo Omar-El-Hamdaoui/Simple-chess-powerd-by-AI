@@ -194,7 +194,7 @@ int main() {
 
         // Tour IA
         if (!gameOver && currentPlayer == 'b') {
-            Item* best = chooseBestMove(board, 'b', 3);
+            Item* best = chooseBestMove(board, 'b', 7);
             if (best) {
                 std::memcpy(board, best->board, sizeof(board));
                 free(best);

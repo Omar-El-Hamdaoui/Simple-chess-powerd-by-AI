@@ -14,7 +14,7 @@ int main() {
 
     char currentPlayer = 'w'; // Les blancs commencent
     int maxMoves = 70;        // Nombre de coups maximum à simuler
-    int depth = 2;            // Profondeur de l'IA
+    int depth = 4;            // Profondeur de l'IA
 
     for (int moveNumber = 1; moveNumber <= maxMoves; moveNumber++) {
         printf("\n=== Coup %d (%s) ===\n", moveNumber, (currentPlayer == 'w') ? "Blancs" : "Noirs");
