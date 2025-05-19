@@ -28,7 +28,8 @@ sf::Texture loadPieceTexture(char piece) {
     return texture;
 }
 
-// Dessine le plateau, les pièces et les surbrillances
+const float DOT_RADIUS = 10.f;  // rayon de 6px => diamètre 12px
+
 void drawBoard(sf::RenderWindow& window,
                Piece board[BOARD_SIZE][BOARD_SIZE],
                std::map<char, sf::Texture>& textures,
@@ -36,6 +37,8 @@ void drawBoard(sf::RenderWindow& window,
                bool legal[BOARD_SIZE][BOARD_SIZE])
 {
     window.clear(sf::Color::White);
+
+    // 1) cases + sélection
     for (int i = 0; i < BOARD_SIZE; ++i) {
         for (int j = 0; j < BOARD_SIZE; ++j) {
             sf::RectangleShape sq({float(TILE_SIZE), float(TILE_SIZE)});
@@ -43,8 +46,6 @@ void drawBoard(sf::RenderWindow& window,
 
             if (selected[i][j]) {
                 sq.setFillColor(sf::Color(50,200,50,180));
-            } else if (legal[i][j]) {
-                sq.setFillColor(sf::Color(200,200,50,120));
             } else {
                 bool light = ((i + j) % 2) == 0;
                 sq.setFillColor(
@@ -54,7 +55,12 @@ void drawBoard(sf::RenderWindow& window,
                 );
             }
             window.draw(sq);
+        }
+    }
 
+    // 2) pièces
+    for (int i = 0; i < BOARD_SIZE; ++i) {
+        for (int j = 0; j < BOARD_SIZE; ++j) {
             char t = board[i][j].type;
             if (t != ' ') {
                 sf::Sprite spr;
@@ -69,8 +75,26 @@ void drawBoard(sf::RenderWindow& window,
             }
         }
     }
+
+    // 3) dots pour legal moves
+    for (int i = 0; i < BOARD_SIZE; ++i) {
+        for (int j = 0; j < BOARD_SIZE; ++j) {
+            if (legal[i][j]) {
+                sf::CircleShape dot(DOT_RADIUS);
+                dot.setFillColor(sf::Color(200,200,50,120));
+                dot.setOrigin(DOT_RADIUS, DOT_RADIUS);
+                dot.setPosition(
+                  j * TILE_SIZE + TILE_SIZE/2.f,
+                  i * TILE_SIZE + TILE_SIZE/2.f
+                );
+                window.draw(dot);
+            }
+        }
+    }
+
     window.display();
 }
+
 
 int main() {
     ai_init();
@@ -191,7 +215,7 @@ int main() {
 
         // Tour IA
         if (!gameOver && currentPlayer == 'b') {
-            Item* best = chooseBestMove(board, 'b', 5);
+            Item* best = chooseBestMove(board, 'b', 3);
             if (best) {
                 std::memcpy(board, best->board, sizeof(board));
                 // Debug: promotion réelle noir

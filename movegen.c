@@ -39,111 +39,114 @@ static void add_move(Item** list, Piece tmp[8][8], char playerWhoMoved) {
 
 
 Item* generateMoves(Piece board[8][8], char player) {
-    Item* moves    = NULL;
-    char  enemy    = (player == 'w' ? 'b' : 'w');
-    char  nextP    = enemy;
+    // Normalize player to lowercase 'w' or 'b'
+    char me    = tolower((unsigned char)player);
+    char enemy = (me == 'w') ? 'b' : 'w';
+    Item* moves = NULL;
     Piece tmp[8][8];
 
     for (int i = 0; i < 8; ++i) {
         for (int j = 0; j < 8; ++j) {
             Piece p = board[i][j];
-            if (p.type == ' ' || p.color != player)
+            // skip empty squares and opponent pieces
+            if (p.type == ' ' || tolower((unsigned char)p.color) != me)
                 continue;
 
-            switch (toupper(p.type)) {
+            switch (toupper((unsigned char)p.type)) {
                 case 'P': {
-                    int dir   = (player == 'w') ? -1 : +1;
-                    int start = (player == 'w') ? 6 : 1;
-                    // avance 1
-                    if (i+dir >= 0 && i+dir < 8 && board[i+dir][j].type == ' ') {
+                    int dir   = (me == 'w') ? -1 : +1;
+                    int start = (me == 'w') ? 6  : 1;
+                    // one-square advance
+                    if (i+dir>=0 && i+dir<8 && board[i+dir][j].type == ' ') {
                         memcpy(tmp, board, sizeof tmp);
                         tmp[i+dir][j] = p;
                         tmp[i][j].type = tmp[i][j].color = ' ';
-                        handlePromotion(tmp, i+dir, j, player);
-                        add_move(&moves, tmp, player);
-                        // avance 2
+                        handlePromotion(tmp, i+dir, j, me);
+                        add_move(&moves, tmp, me);
+                        // two-square initial advance
                         if (i == start && board[i+2*dir][j].type == ' ') {
                             memcpy(tmp, board, sizeof tmp);
                             tmp[i+2*dir][j] = p;
                             tmp[i][j].type = tmp[i][j].color = ' ';
-                            add_move(&moves, tmp, player);
+                            add_move(&moves, tmp, me);
                         }
                     }
-                    // captures diagonales
+                    // diagonal captures
                     for (int dj = -1; dj <= 1; dj += 2) {
                         int ni = i+dir, nj = j+dj;
                         if (ni>=0 && ni<8 && nj>=0 && nj<8
-                            && board[ni][nj].color == enemy)
+                            && tolower((unsigned char)board[ni][nj].color) == enemy)
                         {
                             memcpy(tmp, board, sizeof tmp);
                             tmp[ni][nj] = p;
                             tmp[i][j].type = tmp[i][j].color = ' ';
-                            handlePromotion(tmp, ni, nj, player);
-                            add_move(&moves, tmp, player);
+                            handlePromotion(tmp, ni, nj, me);
+                            add_move(&moves, tmp, me);
                         }
                     }
                     break;
                 }
+
                 case 'N':
                     for (int d = 0; d < 8; ++d) {
                         int ni = i + knight_dirs[d][0];
                         int nj = j + knight_dirs[d][1];
                         if (ni<0||ni>7||nj<0||nj>7) continue;
-                        if (board[ni][nj].color == player) continue;
+                        if (tolower((unsigned char)board[ni][nj].color) == me) continue;
                         memcpy(tmp, board, sizeof tmp);
                         tmp[ni][nj] = p;
                         tmp[i][j].type = tmp[i][j].color = ' ';
-                        add_move(&moves, tmp, player);
+                        add_move(&moves, tmp, me);
                     }
                     break;
 
                 case 'B': case 'R': case 'Q': {
-                    int startd = (toupper(p.type)=='B') ? 4 : 0;
-                    int endd   = (toupper(p.type)=='R') ? 4 : 8;
-                    // pour la reine, on combine les deux, donc startd=0,endd=8
-                    if (toupper(p.type) == 'Q') { startd = 0; endd = 8; }
+                    int startd = (toupper((unsigned char)p.type)=='B') ? 4 : 0;
+                    int endd   = (toupper((unsigned char)p.type)=='R') ? 4 : 8;
+                    if (toupper((unsigned char)p.type) == 'Q') { startd = 0; endd = 8; }
                     for (int d = startd; d < endd; ++d) {
                         int di = king_dirs[d][0], dj = king_dirs[d][1];
                         for (int s = 1; ; ++s) {
                             int ni = i + di*s, nj = j + dj*s;
                             if (ni<0||ni>7||nj<0||nj>7) break;
-                            if (board[ni][nj].color == player) break;
+                            char c = tolower((unsigned char)board[ni][nj].color);
+                            if (c == me) break;
                             memcpy(tmp, board, sizeof tmp);
                             tmp[ni][nj] = p;
                             tmp[i][j].type = tmp[i][j].color = ' ';
-                            add_move(&moves, tmp, player);
-                            if (board[ni][nj].color == enemy) break;
+                            add_move(&moves, tmp, me);
+                            if (c == enemy) break;
                         }
                     }
                     break;
                 }
 
                 case 'K':
-                    // déplacements du roi
+                    // king moves
                     for (int d = 0; d < 8; ++d) {
                         int ni = i + king_dirs[d][0];
                         int nj = j + king_dirs[d][1];
                         if (ni<0||ni>7||nj<0||nj>7) continue;
-                        if (board[ni][nj].color == player) continue;
+                        if (tolower((unsigned char)board[ni][nj].color) == me) continue;
                         memcpy(tmp, board, sizeof tmp);
                         tmp[ni][nj] = p;
                         tmp[i][j].type = tmp[i][j].color = ' ';
-                        add_move(&moves, tmp, player);
+                        add_move(&moves, tmp, me);
                     }
-                    // roque
+                    // castling
                     {
                         Item* scratch = nodeAlloc();
-                        memcpy(scratch->board, board, sizeof board);
-                        scratch->player = player;
-                        scratch->whiteKingMoved =
-                        scratch->whiteKingsideRookMoved =
-                        scratch->whiteQueensideRookMoved =
-                        scratch->blackKingMoved =
-                        scratch->blackKingsideRookMoved =
-                        scratch->blackQueensideRookMoved = 0;
-                        tryCastling(board, player, scratch, &moves);
+                        memcpy(scratch->board, board, sizeof scratch->board);
+                        scratch->player = me;
+                        scratch->whiteKingMoved = scratch->whiteKingsideRookMoved =
+                        scratch->whiteQueensideRookMoved = scratch->blackKingMoved =
+                        scratch->blackKingsideRookMoved = scratch->blackQueensideRookMoved = 0;
+                        tryCastling(board, me, scratch, &moves);
                         free(scratch);
                     }
+                    break;
+
+                default:
                     break;
             }
         }
@@ -151,7 +154,6 @@ Item* generateMoves(Piece board[8][8], char player) {
 
     return moves;
 }
-
 
 
 int isInCheck(Piece board[8][8], char color) {
