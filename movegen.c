@@ -4,6 +4,7 @@
 #include "movegen.h"
 
 #include <ctype.h>
+#include <stdio.h>
 
 #include "item.h"
 #include "list.h"
@@ -192,56 +193,97 @@ int isInCheck(Piece board[8][8], char color) {
 }
 
 
-int tryCastling(Piece board[8][8], char player, Item* parent, Item** moveList) {
+int tryCastling(Piece board[8][8],
+                char player,
+                Item* parent,
+                Item** moveList)
+{
     int row = (player=='w') ? 7 : 0;
     char kingType = (player=='w') ? 'K' : 'k';
     char rookType = (player=='w') ? 'R' : 'r';
+    char enemy    = (player=='w') ? 'b' : 'w';
 
-    // Le roi doit être à sa case d'origine
+    // 0) Le roi doit être sur sa case d'origine
     if (board[row][4].type != kingType) return 0;
 
-    // --- Roque côté roi ---
-    // 1) le roi et la tour n'ont pas bougé (flags parent)
-    // 2) la tour est **bien** à h1/h8
-    // 3) cases entre les deux vides
-    if (!(player=='w' ? parent->whiteKingMoved : parent->blackKingMoved)
-        && !(player=='w' ? parent->whiteKingsideRookMoved : parent->blackKingsideRookMoved)
+    // Flags parent
+    bool kingMoved = (player=='w') ? parent->whiteKingMoved
+                                  : parent->blackKingMoved;
+    bool rookKSMoved = (player=='w') ? parent->whiteKingsideRookMoved
+                                     : parent->blackKingsideRookMoved;
+    bool rookQSMoved = (player=='w') ? parent->whiteQueensideRookMoved
+                                     : parent->blackQueensideRookMoved;
+
+    // ========== Roque côté roi ==========
+    // Tour en h1/h8, cases f,g libres, ni le roi ni la tour n'ont bougé
+    if (!kingMoved && !rookKSMoved
         && board[row][7].type == rookType
         && board[row][5].type == ' '
-        && board[row][6].type == ' '
-        && !isInCheck(board, player))
+        && board[row][6].type == ' ')
     {
-        Piece tmp[8][8];
-        memcpy(tmp, board, sizeof tmp);
-        // déplace roi et tour
-        tmp[row][6] = tmp[row][4];
-        tmp[row][4].type = tmp[row][4].color = ' ';
-        tmp[row][5] = tmp[row][7];
-        tmp[row][7].type = tmp[row][7].color = ' ';
-        // n’oubliez pas de propager les flags de roque dans child
-        add_castling_move(tmp, moveList, parent, player, 1);
+        // 1) Le roi ne doit pas être en échec sur e-file, f-file, g-file
+        //    (on teste en simulant le roi sur chaque case)
+        bool passesThroughCheck = false;
+        for (int s = 4; s <= 6; ++s) {
+            Piece tmp1[8][8];
+            memcpy(tmp1, board, sizeof tmp1);
+            // on déplace temporairement le roi
+            tmp1[row][s] = tmp1[row][4];
+            tmp1[row][4].type = tmp1[row][4].color = ' ';
+            if (isInCheck(tmp1, player)) {
+                passesThroughCheck = true;
+                break;
+            }
+        }
+        if (!passesThroughCheck) {
+            // OK, on crée le coup final
+            Piece tmp2[8][8];
+            memcpy(tmp2, board, sizeof tmp2);
+            // déplace roi et tour
+            tmp2[row][6] = tmp2[row][4];
+            tmp2[row][4].type = tmp2[row][4].color = ' ';
+            tmp2[row][5] = tmp2[row][7];
+            tmp2[row][7].type = tmp2[row][7].color = ' ';
+
+            // on propague les flags : roi et tour ont bougé
+            add_castling_move(tmp2, moveList, parent, player, /*kingside=*/1);
+        }
     }
 
-    // --- Roque côté dame (idem) ---
-    if (!(player=='w' ? parent->whiteKingMoved : parent->blackKingMoved)
-        && !(player=='w' ? parent->whiteQueensideRookMoved : parent->blackQueensideRookMoved)
+    // ========== Roque côté dame ==========
+    // Tour en a1/a8, cases b,c,d libres, ni le roi ni la tour n'ont bougé
+    if (!kingMoved && !rookQSMoved
         && board[row][0].type == rookType
         && board[row][1].type == ' '
         && board[row][2].type == ' '
-        && board[row][3].type == ' '
-        && !isInCheck(board, player))
+        && board[row][3].type == ' ')
     {
-        Piece tmp[8][8];
-        memcpy(tmp, board, sizeof tmp);
-        tmp[row][2] = tmp[row][4];
-        tmp[row][4].type = tmp[row][4].color = ' ';
-        tmp[row][3] = tmp[row][0];
-        tmp[row][0].type = tmp[row][0].color = ' ';
-        add_castling_move(tmp, moveList, parent, player, 0);
+        bool passesThroughCheck = false;
+        for (int s = 4; s >= 2; --s) {
+            Piece tmp1[8][8];
+            memcpy(tmp1, board, sizeof tmp1);
+            tmp1[row][s] = tmp1[row][4];
+            tmp1[row][4].type = tmp1[row][4].color = ' ';
+            if (isInCheck(tmp1, player)) {
+                passesThroughCheck = true;
+                break;
+            }
+        }
+        if (!passesThroughCheck) {
+            Piece tmp2[8][8];
+            memcpy(tmp2, board, sizeof tmp2);
+            tmp2[row][2] = tmp2[row][4];
+            tmp2[row][4].type = tmp2[row][4].color = ' ';
+            tmp2[row][3] = tmp2[row][0];
+            tmp2[row][0].type = tmp2[row][0].color = ' ';
+
+            add_castling_move(tmp2, moveList, parent, player, /*kingside=*/0);
+        }
     }
 
     return 0;
 }
+
 
 // Fonction externe pour ajouter un mouvement de roque
 void add_castling_move(Piece temp[8][8], Item** list, Item* parent_state, char player, int kingside) {
@@ -254,12 +296,12 @@ void add_castling_move(Piece temp[8][8], Item** list, Item* parent_state, char p
     // Mémorisation des mouvements de roque
     if (player == 'w') {
         child->whiteKingMoved = 1;
-        child->whiteKingsideRookMoved = kingside ? 1 : 0;
-        child->whiteQueensideRookMoved = kingside ? 0 : 1;
+        child->whiteKingsideRookMoved = kingside ? 1 : parent_state->whiteKingsideRookMoved;
+        child->whiteQueensideRookMoved = kingside ? parent_state->whiteQueensideRookMoved : 1;
     } else {
         child->blackKingMoved = 1;
-        child->blackKingsideRookMoved = kingside ? 1 : 0;
-        child->blackQueensideRookMoved = kingside ? 0 : 1;
+        child->blackKingsideRookMoved = kingside ? 1 : parent_state->blackKingsideRookMoved;
+        child->blackQueensideRookMoved = kingside ? parent_state->blackQueensideRookMoved : 1;
     }
 
     child->next = *list;
@@ -270,11 +312,15 @@ void add_castling_move(Piece temp[8][8], Item** list, Item* parent_state, char p
 
 void handlePromotion(Piece board[8][8], int i2, int j2, char player) {
     if (player == 'w' && i2 == 0 && board[i2][j2].type == 'P') {
+        printf("DEBUG: promotion blanc en (%d,%d)\n", i2, j2);
         board[i2][j2].type = 'Q';
-    } else if (player == 'b' && i2 == 7 && board[i2][j2].type == 'p') {
+    }
+    else if (player == 'b' && i2 == 7 && board[i2][j2].type == 'p') {
+        printf("DEBUG: promotion noir en (%d,%d)\n", i2, j2);
         board[i2][j2].type = 'q';
     }
 }
+
 
 int isCheckmate(Piece board[8][8], char player) {
     if (!isInCheck(board, player)) return 0;

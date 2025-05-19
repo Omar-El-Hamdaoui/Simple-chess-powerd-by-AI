@@ -22,7 +22,8 @@ sf::Texture loadPieceTexture(char piece) {
     path += std::tolower(piece);
     path += ".png";
     if (!texture.loadFromFile(path)) {
-        std::cerr << "Erreur de chargement: " << path << "\n";
+        std::cerr << "Erreur de chargement de la texture pour '" << piece
+                  << "' : " << path << "\n";
     }
     return texture;
 }
@@ -119,39 +120,32 @@ int main() {
             if (ev.type == sf::Event::Closed)
                 window.close();
 
-            // tant que la partie n'est pas finie, on gère le clic blanc
+            // clic blanc
             if (ev.type == sf::Event::MouseButtonPressed &&
-            ev.mouseButton.button == sf::Mouse::Left &&
-            currentPlayer == 'w')
+                ev.mouseButton.button == sf::Mouse::Left &&
+                currentPlayer == 'w')
             {
                 int x = ev.mouseButton.x / TILE_SIZE;
                 int y = ev.mouseButton.y / TILE_SIZE;
-
-                const bool inBoard = (x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE);
+                bool inBoard = (x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE);
 
                 if (!haveSelection) {
-                    // 1) On n’a rien de sélectionné → seul un clic sur une pièce blanche la prend
                     if (inBoard && board[y][x].type != ' ' && board[y][x].color == 'w') {
                         haveSelection = true;
                         sel_i = y;
                         sel_j = x;
                     }
                 } else {
-                    // 2a) Clic sur une autre pièce blanche → on change la sélection
                     if (inBoard && board[y][x].type != ' ' && board[y][x].color == 'w') {
                         sel_i = y;
                         sel_j = x;
                     }
-                    // 2b) Clic sur une case vide **et** légale → on joue le coup
                     else if (inBoard && legal[y][x]) {
                         bool valid = false;
                         Item* moves = generateMoves(board, 'w');
                         for (Item* m = moves; m; m = m->next) {
-                            // on vérifie que la pièce sélectionnée a disparu de sel_i/sel_j
-                            // et qu’elle est apparue en y/x
                             if (m->board[sel_i][sel_j].type == ' ' &&
-                                m->board[y][x].color == 'w' &&
-                                m->board[y][x].type == board[sel_i][sel_j].type)
+                                m->board[y][x].color == 'w')
                             {
                                 std::memcpy(board, m->board, sizeof(board));
                                 valid = true;
@@ -160,17 +154,20 @@ int main() {
                         }
                         freeList(moves);
 
-                        // on désélectionne *quoiqu’il arrive*
                         haveSelection = false;
                         std::memset(selected, 0, sizeof(selected));
                         std::memset(legal,    0, sizeof(legal));
 
-
-
                         if (valid) {
+                            // Debug: promotion réelle blanc
+                            if (y == 0 && board[y][x].type == 'Q') {
+                                std::cout << ">> PROMO réelle blanc en (" << y << "," << x
+                                          << ") type=" << board[y][x].type << "\n";
+                            }
                             drawBoard(window, board, textures, selected, legal);
                             sf::sleep(sf::milliseconds(150));
-                            // test échec & mat / pat...
+
+                            // test échec & mat / pat
                             char opp = 'b';
                             if (isCheckmate(board, opp)) {
                                 endMessage = "Échec et mat, Blancs gagnent !";
@@ -182,11 +179,10 @@ int main() {
                                 currentPlayer = 'b';
                             }
                         }
-                    }
-                    else {
+                    } else {
                         haveSelection = false;
-                        memset(selected, 0, sizeof(selected));
-                        memset(legal,    0, sizeof(legal));
+                        std::memset(selected, 0, sizeof(selected));
+                        std::memset(legal,    0, sizeof(legal));
                     }
                 }
             }
@@ -196,41 +192,41 @@ int main() {
         if (!gameOver && currentPlayer == 'b') {
             Item* best = chooseBestMove(board, 'b', 1);
             if (best) {
-                // --- l'IA joue son coup ---
                 std::memcpy(board, best->board, sizeof(board));
+                // Debug: promotion réelle noir
+                for (int i = 0; i < BOARD_SIZE; ++i)
+                    for (int j = 0; j < BOARD_SIZE; ++j)
+                        if (i == 7 && board[i][j].type == 'q') {
+                            std::cout << ">> PROMO réelle noir en (" << i << "," << j << ")\n";
+                        }
                 free(best);
                 drawBoard(window, board, textures, selected, legal);
                 sf::sleep(sf::milliseconds(150));
 
-                // on vérifie si, après ce coup, les blancs sont mat/pat
-                if (isCheckmate(board, 'w')) {
+                char opp = 'w';
+                if (isCheckmate(board, opp)) {
                     endMessage = "Échec et mat, Noirs gagnent !";
                     gameOver = true;
-                } else if (isStalemate(board, 'w')) {
+                } else if (isStalemate(board, opp)) {
                     endMessage = "Pat !";
                     gameOver = true;
                 } else {
                     currentPlayer = 'w';
                 }
-            }
-            else {
-                // --- pas de coup légal pour les noirs ---
-                if (isCheckmate(board, 'b')) {
+            } else {
+                // Aucun coup légal pour les Noirs
+                if (isCheckmate(board, 'b'))
                     endMessage = "Échec et mat, Blancs gagnent !";
-                } else if (isStalemate(board, 'b')) {
+                else if (isStalemate(board, 'b'))
                     endMessage = "Pat !";
-                } else {
-                    // idéalement on n’arrive jamais ici, mais au cas où...
+                else
                     endMessage = "Aucun coup possible pour les Noirs.";
-                }
                 gameOver = true;
-                // on dessine le plateau final et le message
                 drawBoard(window, board, textures, selected, legal);
             }
         }
 
-
-        // surbrillance des coups légaux (après sélection)
+        // Surbrillance des coups légaux
         if (!gameOver && haveSelection) {
             std::memset(legal,    0, sizeof(legal));
             std::memset(selected, 0, sizeof(selected));
@@ -251,15 +247,11 @@ int main() {
             drawBoard(window, board, textures, selected, legal);
         }
 
-        // si gameOver, on affiche le message et on passe en attente de fermeture
+        // Fin de partie
         if (gameOver) {
-            // affiche le plateau final
             drawBoard(window, board, textures, selected, legal);
-
-            // crée et positionne le texte
             sf::Text text(endMessage, font, 36);
             text.setFillColor(sf::Color::Red);
-            // centre
             sf::FloatRect bounds = text.getLocalBounds();
             text.setPosition(
                 (window.getSize().x - bounds.width)/2 - bounds.left,
@@ -268,7 +260,6 @@ int main() {
             window.draw(text);
             window.display();
 
-            // attend la fermeture manuelle
             sf::Event ev2;
             while (window.isOpen()) {
                 while (window.pollEvent(ev2))
